@@ -2,7 +2,7 @@
 
 A collection of **synthetic but realistic household-property documents** — service receipts, contractor emails, manuals, inspection reports, utility bills, mortgage statements, HOA notices, neighborhood communications — formatted for demonstration of personal-property annotation and decisional-aggregate workflows with [Semiont](https://github.com/The-AI-Alliance/semiont).
 
-This KB is the operational counterpart to the home-management worked examples in [`semiont-template-kb`'s `PERSONAL-KB-EXPLORATION.md`](https://github.com/The-AI-Alliance/semiont-template-kb/blob/main/PERSONAL-KB-EXPLORATION.md). The skills implement those queries — backward-looking maintenance assessments, forward-looking system-priority lists, vendor track-records — against synthetic data, but operate generically over any household-property corpus dropped into the same directory layout.
+This KB is the operational counterpart to the home-management worked examples in [`semiont-template-kb`'s `PERSONAL-KB-EXPLORATION.md`](https://github.com/The-AI-Alliance/semiont-household-kb/blob/main/PERSONAL-KB-EXPLORATION.md). The skills implement those queries — backward-looking maintenance assessments, forward-looking system-priority lists, vendor track-records — against synthetic data, but operate generically over any household-property corpus dropped into the same directory layout.
 
 ## About This Dataset
 
@@ -40,7 +40,7 @@ This repo ships eleven skills that build a layered home-property KB on top of th
 
 ## Quick Start
 
-Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont). This repo follows the same layout and startup flow as [`semiont-template-kb`](https://github.com/The-AI-Alliance/semiont-template-kb).
+Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont). This repo follows the same layout and startup flow as [`semiont-template-kb`](https://github.com/The-AI-Alliance/semiont-household-kb).
 
 ### Open in Codespaces
 
@@ -50,7 +50,7 @@ gh codespace ports forward 4000:4000
 gh codespace ssh -- cat .devcontainer/admin.json
 ```
 
-> **Privacy.** This synthetic dataset poses no privacy risk; a real personal-property KB deployment with actual addresses, vendor contracts, and mortgage details should use the local-first start path rather than Codespaces. See [`PERSONAL-KB-EXPLORATION.md`](https://github.com/The-AI-Alliance/semiont-template-kb/blob/main/PERSONAL-KB-EXPLORATION.md#privacy-as-a-first-order-design-concern) for the longer discussion.
+> **Privacy.** This synthetic dataset poses no privacy risk; a real personal-property KB deployment with actual addresses, vendor contracts, and mortgage details should use the local-first start path rather than Codespaces. See [`PERSONAL-KB-EXPLORATION.md`](https://github.com/The-AI-Alliance/semiont-household-kb/blob/main/PERSONAL-KB-EXPLORATION.md#privacy-as-a-first-order-design-concern) for the longer discussion.
 
 ## License
 
