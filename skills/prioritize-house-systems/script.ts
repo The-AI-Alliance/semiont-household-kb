@@ -114,7 +114,8 @@ async function main(): Promise<void> {
   for (const ev of events) {
     const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
     for (const a of evAnnos) {
-      const targets = (a.body ?? []).filter(
+      const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
+      const targets = bodies.filter(
         (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
       );
       for (const t of targets) {
@@ -127,6 +128,12 @@ async function main(): Promise<void> {
     [...subsystems].sort((a, b) =>
       (eventsBySubsystem.get(b['@id']) ?? 0) - (eventsBySubsystem.get(a['@id']) ?? 0),
     )[0];
+  if (!seedSubsystem) {
+    console.error('No Subsystem resources to seed from.');
+    semiont.dispose();
+    closeInteractive();
+    return;
+  }
   const seedSubsystemId = ridBrand(seedSubsystem['@id']);
   const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
   const seedAnno = seedAnnos[0];
@@ -138,6 +145,12 @@ async function main(): Promise<void> {
   }
 
   const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
+  if (!('response' in gather)) {
+    console.error('gather.annotation did not return a Complete event');
+    semiont.dispose();
+    closeInteractive();
+    return;
+  }
   const context = gather.response as GatheredContext;
 
   const overdueSchedules = schedules
@@ -157,8 +170,7 @@ async function main(): Promise<void> {
     storageUri: `file://generated/system-priorities-${new Date().toISOString().slice(0, 10)}.md`,
     context,
     entityTypes: ['SystemPriorities', 'Aggregate'],
-    instructions: PRIORITIES_INSTRUCTIONS,
-    prependBody: prepend,
+    prompt: `${PRIORITIES_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
   });
   if (yieldEvent.kind !== 'complete') {
     console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);

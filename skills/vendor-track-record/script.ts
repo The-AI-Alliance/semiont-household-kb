@@ -73,7 +73,8 @@ async function main(): Promise<void> {
   for (const ev of events) {
     const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
     for (const a of evAnnos) {
-      const targets = (a.body ?? []).filter(
+      const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
+      const targets = bodies.filter(
         (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
       );
       for (const t of targets) {
@@ -102,8 +103,11 @@ async function main(): Promise<void> {
     let seedRId = vendorId;
     let seedAnnos = await semiont.browse.annotations(vendorId);
     if (seedAnnos.length === 0 && vendorEvents.length > 0) {
-      seedRId = ridBrand(vendorEvents[0]['@id']);
-      seedAnnos = await semiont.browse.annotations(seedRId);
+      const firstEvent = vendorEvents[0];
+      if (firstEvent) {
+        seedRId = ridBrand(firstEvent['@id']);
+        seedAnnos = await semiont.browse.annotations(seedRId);
+      }
     }
     const seedAnno = seedAnnos[0];
     if (!seedAnno) {
@@ -112,6 +116,7 @@ async function main(): Promise<void> {
     }
 
     const gather = await semiont.gather.annotation(seedRId, seedAnno.id, { contextWindow: 1500 });
+    if (!('response' in gather)) continue;
     const context = gather.response as GatheredContext;
 
     const eventList = vendorEvents
@@ -127,8 +132,7 @@ async function main(): Promise<void> {
       storageUri: `file://generated/vendor-track-${slugify(vendorName)}.md`,
       context,
       entityTypes: ['VendorTrackRecord', 'Aggregate'],
-      instructions: TRACK_RECORD_INSTRUCTIONS,
-      prependBody: prepend,
+      prompt: `${TRACK_RECORD_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
     });
     if (yieldEvent.kind !== 'complete') continue;
     const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;

@@ -67,16 +67,26 @@ async function main(): Promise<void> {
     const annotations = await semiont.browse.annotations(rId);
     for (const ann of annotations) {
       if (ann.motivation !== 'linking') continue;
-      const tags = (ann.body ?? [])
+      const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
+      const tags = bodies
         .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
         .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]));
       if (!tags.includes('Date')) continue;
 
-      const sel = ann.target?.selector;
-      const exact = (sel?.exact ?? '') as string;
-      const span = sel && typeof sel.start === 'number' && typeof sel.end === 'number'
-        ? sel.end - sel.start
-        : exact.length;
+      const target = ann.target;
+      const selectors =
+        typeof target === 'string' || !target.selector
+          ? []
+          : Array.isArray(target.selector)
+            ? target.selector
+            : [target.selector];
+      let exact = '';
+      let span = 0;
+      for (const s of selectors) {
+        if (s.type === 'TextQuoteSelector') { exact = s.exact; }
+        if (s.type === 'TextPositionSelector') { span = s.end - s.start; }
+      }
+      if (!span) span = exact.length;
       // Date span itself is short; the test of "context length" comes when we gather
       dateAnnos.push({ rId, annId: ann.id, text: exact, contextLength: span });
     }
@@ -101,6 +111,7 @@ async function main(): Promise<void> {
   let skipped = 0;
   for (const d of dateAnnos) {
     const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
+    if (!('response' in gather)) continue;
     const context = gather.response as GatheredContext;
     const ctxText = (context as any).text ?? (context as any).content ?? '';
     if (typeof ctxText === 'string' && ctxText.length < MIN_DATE_CONTEXT) {
@@ -113,7 +124,7 @@ async function main(): Promise<void> {
       storageUri: `file://generated/event-${slugify(d.text)}-${d.annId.slice(-6)}.md`,
       context,
       entityTypes: ['Event', 'Aggregate'],
-      instructions: EVENT_INSTRUCTIONS,
+      prompt: EVENT_INSTRUCTIONS,
     });
     if (yieldEvent.kind !== 'complete') continue;
     const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;

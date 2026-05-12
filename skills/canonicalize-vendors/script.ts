@@ -56,17 +56,29 @@ async function main(): Promise<void> {
     const annotations = await semiont.browse.annotations(rId);
     for (const ann of annotations) {
       if (ann.motivation !== 'linking') continue;
-      const tags = (ann.body ?? [])
+      const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
+      const tags = bodies
         .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
         .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]));
       if (!tags.some((t: string) => TARGET_TAGS.has(t))) continue;
-      const alreadyBound = (ann.body ?? []).some(
+      const alreadyBound = bodies.some(
         (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
       );
+      const target = ann.target;
+      const selectors =
+        typeof target === 'string' || !target.selector
+          ? []
+          : Array.isArray(target.selector)
+            ? target.selector
+            : [target.selector];
+      let text = '';
+      for (const s of selectors) {
+        if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
+      }
       vendorAnnos.push({
         rId,
         annId: ann.id,
-        text: ann.target?.selector?.exact ?? '',
+        text,
         alreadyBound,
       });
     }
@@ -108,7 +120,9 @@ async function main(): Promise<void> {
   let synthesized = 0;
   for (const [key, anns] of clusters) {
     const sample = anns[0];
+    if (!sample) continue;
     const gather = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1200 });
+    if (!('response' in gather)) continue;
     const context = gather.response as GatheredContext;
     const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
       limit: 5,

@@ -24,7 +24,12 @@ function median(nums: number[]): number {
   if (nums.length === 0) return 0;
   const sorted = [...nums].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  if (sorted.length % 2 === 0) {
+    const a = sorted[mid - 1] ?? 0;
+    const b = sorted[mid] ?? 0;
+    return (a + b) / 2;
+  }
+  return sorted[mid] ?? 0;
 }
 
 function coefficientOfVariation(nums: number[]): number {
@@ -47,16 +52,16 @@ function classifyCadence(medianDays: number): string {
 function parseEventBody(body: string): { date: Date | null; subsystem: string | null; vendor: string | null; kind: string | null } {
   const out = { date: null as Date | null, subsystem: null as string | null, vendor: null as string | null, kind: null as string | null };
   const dateMatch = body.match(/(?:Date|date)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|[A-Z][a-z]+ \d{1,2},? \d{4})/);
-  if (dateMatch) {
+  if (dateMatch && dateMatch[1]) {
     const parsed = new Date(dateMatch[1]);
     if (!isNaN(parsed.getTime())) out.date = parsed;
   }
   const subsystemMatch = body.match(/(?:Subsystem|System|subsystem)[:\s]+([^\n]+)/i);
-  if (subsystemMatch) out.subsystem = subsystemMatch[1].trim().toLowerCase();
+  if (subsystemMatch && subsystemMatch[1]) out.subsystem = subsystemMatch[1].trim().toLowerCase();
   const vendorMatch = body.match(/(?:Vendor|vendor)[:\s]+([^\n]+)/i);
-  if (vendorMatch) out.vendor = vendorMatch[1].trim().toLowerCase();
+  if (vendorMatch && vendorMatch[1]) out.vendor = vendorMatch[1].trim().toLowerCase();
   const kindMatch = body.match(/(?:Kind|kind|Type|type)[:\s]+([^\n]+)/i);
-  if (kindMatch) out.kind = kindMatch[1].trim().toLowerCase();
+  if (kindMatch && kindMatch[1]) out.kind = kindMatch[1].trim().toLowerCase();
   return out;
 }
 
@@ -123,14 +128,19 @@ async function main(): Promise<void> {
     const sorted = [...gEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
     const intervals: number[] = [];
     for (let i = 1; i < sorted.length; i++) {
-      const days = (sorted[i].date.getTime() - sorted[i - 1].date.getTime()) / 86400000;
+      const curr = sorted[i];
+      const prev = sorted[i - 1];
+      if (!curr || !prev) continue;
+      const days = (curr.date.getTime() - prev.date.getTime()) / 86400000;
       intervals.push(days);
     }
     const med = median(intervals);
     const cv = coefficientOfVariation(intervals);
     const cadence = cv > IRREGULAR_TOLERANCE ? 'irregular' : classifyCadence(med);
 
-    const last = sorted[sorted.length - 1].date;
+    const lastEvent = sorted[sorted.length - 1];
+    if (!lastEvent) continue;
+    const last = lastEvent.date;
     const projectedNext = new Date(last.getTime() + med * 86400000);
     const today = new Date();
     const isOverdue = projectedNext.getTime() < today.getTime();
