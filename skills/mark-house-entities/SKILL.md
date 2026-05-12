@@ -10,7 +10,9 @@ You are detecting named entities across the home-property corpus.
 
 ## What it does
 
-For every markdown / text resource, calls `mark.assist(resourceId, 'linking', { entityTypes })`.
+For every markdown / text resource, calls `mark.assist(resourceId, 'linking', { entityTypes, includeDescriptiveReferences })`.
+
+By default, this surfaces both formally-named entities AND anaphoric / descriptive references that point at those entity types ("the contractor", "the AC", "the master bath", "the basement"). Tier-2 canonicalize-* skills resolve both kinds against the same canonical resources. Set `INCLUDE_DESCRIPTIVE_REFERENCES=0` to restrict the pass to named entities only.
 
 | Entity type | What it tags |
 |---|---|

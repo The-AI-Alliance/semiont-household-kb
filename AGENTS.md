@@ -18,13 +18,12 @@ This KB operationalizes the home-management worked examples in [`semiont-templat
   - `src/external-authorities.ts` — adapters for manufacturer manual lookups, ASHRAE / NFPA / NRCA standard references, USDA hardiness zones
   - `src/lifespan-data.ts` — typical lifespan ranges by subsystem (used by `prioritize-house-systems` when no manufacturer reference is available)
   - `src/interactive.ts` — `confirm` / `pick` / `preview` helpers for tier-3 interactive checkpoints
-- **`skills/`** — eleven skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running backend.
+- **`skills/`** — ten skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running backend.
 
 | Skill | What it does | New SDK verbs |
 |---|---|---|
 | [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
-| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address | `mark.assist` (linking) |
-| [`mark-descriptive-references`](skills/mark-descriptive-references/) | Detect anaphoric mentions ("the contractor", "the AC unit", "the basement") | `mark.assist` (linking) |
+| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.assist` (linking) |
 | [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.fromAnnotation`, `+ bind.body` |
 | [`canonicalize-subsystems`](skills/canonicalize-subsystems/) | Promote Subsystem / Appliance mentions to canonical Subsystem resources with manufacturer / installed-date / warranty / lifespan | same shape |
 | [`canonicalize-vendors`](skills/canonicalize-vendors/) | Promote Vendor / service-company mentions to canonical Vendor resources | same shape |
@@ -71,11 +70,10 @@ Drop a markdown file into `context/`, `curated/`, or `generated/` and skill 1 in
 The seeded corpus contains service receipts and emails from synthetic vendors — some used once, some used many times across multiple subsystems. After running:
 
 1. `ingest-corpus` → resources for each document.
-2. `mark-house-entities` → annotations on Vendor, Subsystem, Date, MonetaryValue spans.
-3. `mark-descriptive-references` → "the contractor", "the plumbers" anaphoric mentions.
-4. `canonicalize-vendors` → one Vendor resource per service company.
-5. `extract-events` → one Event per service / repair / visit.
-6. `vendor-track-record` → per-Vendor aggregate listing every Event the vendor handled, total dollars, last-used recency, repeat-customer pattern, any commenting flags.
+2. `mark-house-entities` → annotations on Vendor, Subsystem, Date, MonetaryValue spans, plus anaphoric mentions ("the contractor", "the plumbers").
+3. `canonicalize-vendors` → one Vendor resource per service company.
+4. `extract-events` → one Event per service / repair / visit.
+5. `vendor-track-record` → per-Vendor aggregate listing every Event the vendor handled, total dollars, last-used recency, repeat-customer pattern, any commenting flags.
 
 The vendor track-record is the demonstration — a queryable artifact that shows *whether the homeowner should call the same contractor again*, citing the exact source emails / receipts. This pattern works on any home-property corpus: drop in your own records, run the skills, get the track-record. Specific vendor names from the seeded corpus appear *only in the track-records the run produces*; the skills themselves never hard-code any vendor or contractor name.
 

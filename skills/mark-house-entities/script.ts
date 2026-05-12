@@ -3,6 +3,15 @@
  * Utility, Service, Date, MonetaryValue, Address spans across the markdown
  * corpus.
  *
+ * mark.assist with motivation 'linking'. Default behavior surfaces both
+ * formally-named entities (people, rooms, subsystems, dates, …) AND
+ * anaphoric / descriptive references that point at those entity types
+ * ("the contractor", "the AC", "the master bath"). Tier-2 canonicalize-*
+ * skills resolve them.
+ *
+ * Set INCLUDE_DESCRIPTIVE_REFERENCES=0 to restrict the pass to named
+ * entities only.
+ *
  * Usage: tsx skills/mark-house-entities/script.ts [<resourceId>] [--interactive]
  */
 
@@ -16,6 +25,13 @@ const ENTITY_TYPES = (
 )
   .split(',')
   .map((t) => entityType(t.trim()));
+
+// Default true. The worker prompt under includeDescriptiveReferences:true
+// asks for BOTH direct mentions and anaphora — strict superset of the
+// named-entity-only pass. Off only when callers explicitly want the
+// narrower set.
+const INCLUDE_DESCRIPTIVE_REFERENCES =
+  (process.env.INCLUDE_DESCRIPTIVE_REFERENCES ?? '1') !== '0';
 
 function getMediaType(r: any): string | undefined {
   const reps = Array.isArray(r.representations)
@@ -57,7 +73,8 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Will run mark.assist (motivation: linking, ${ENTITY_TYPES.length} entity types) ` +
+    `Will run mark.assist (motivation: linking, ${ENTITY_TYPES.length} entity types, ` +
+      `descriptive references ${INCLUDE_DESCRIPTIVE_REFERENCES ? 'on' : 'off'}) ` +
       `against ${targets.length} markdown resource(s).`,
   );
   console.log(`  Entity types: ${ENTITY_TYPES.join(', ')}`);
@@ -73,6 +90,7 @@ async function main(): Promise<void> {
   for (const rId of targets) {
     const progress = await semiont.mark.assist(rId, 'linking', {
       entityTypes: ENTITY_TYPES,
+      includeDescriptiveReferences: INCLUDE_DESCRIPTIVE_REFERENCES,
     });
     const n = createdCount(progress);
     totalCreated += n;

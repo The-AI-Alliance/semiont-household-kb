@@ -21,13 +21,12 @@ The corpus covers the full surface area of a homeowner's documentation:
 
 ## Skills
 
-This repo ships eleven skills that build a layered home-property KB on top of the Semiont SDK. See [AGENTS.md](AGENTS.md) for the full design discussion.
+This repo ships ten skills that build a layered home-property KB on top of the Semiont SDK. See [AGENTS.md](AGENTS.md) for the full design discussion.
 
 | Skill | What it does |
 |---|---|
 | [`ingest-corpus`](skills/ingest-corpus/SKILL.md) | Walk the repo's corpus and create one resource per file. |
-| [`mark-house-entities`](skills/mark-house-entities/SKILL.md) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address spans. |
-| [`mark-descriptive-references`](skills/mark-descriptive-references/SKILL.md) | Detect anaphoric mentions ("the contractor", "the AC unit", "the basement", "the master bath"). |
+| [`mark-house-entities`](skills/mark-house-entities/SKILL.md) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address spans — including anaphoric mentions ("the contractor", "the AC unit", "the master bath"). |
 | [`canonicalize-rooms`](skills/canonicalize-rooms/SKILL.md) | Promote Room mentions to canonical Room resources. |
 | [`canonicalize-subsystems`](skills/canonicalize-subsystems/SKILL.md) | Promote Subsystem / Appliance mentions to canonical Subsystem resources, with installed-date / warranty / manufacturer-rated lifespan. |
 | [`canonicalize-vendors`](skills/canonicalize-vendors/SKILL.md) | Promote Vendor / service-company mentions to canonical Vendor resources. |
