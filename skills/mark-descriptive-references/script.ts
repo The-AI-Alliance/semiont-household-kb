@@ -5,8 +5,20 @@
  * Usage: tsx skills/mark-descriptive-references/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontClient, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontClient, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
+import { createdCount } from '../../src/mark-result.js';
+
+// mark.assist with motivation 'linking' requires a non-empty entityTypes
+// array (SDK validation). The descriptive-reference pass scopes detection
+// to the same household vocabulary `mark-house-entities` uses. Override
+// with the ENTITY_TYPES env var.
+const ENTITY_TYPES = (
+  process.env.ENTITY_TYPES ??
+  'Person,Vendor,Room,Subsystem,Appliance,Utility,Service,Date,MonetaryValue,Address'
+)
+  .split(',')
+  .map((t) => entityType(t.trim()));
 
 const REFERENCE_INSTRUCTIONS = `
 Identify anaphoric / descriptive references to household entities — definite-article references
@@ -72,9 +84,11 @@ async function main(): Promise<void> {
   let total = 0;
   for (const rId of targets) {
     const progress = await semiont.mark.assist(rId, 'linking', {
+      entityTypes: ENTITY_TYPES,
+      includeDescriptiveReferences: true,
       instructions: REFERENCE_INSTRUCTIONS,
     });
-    const n = progress.progress?.createdCount ?? 0;
+    const n = createdCount(progress);
     total += n;
     console.log(`  ${rId}: ${n} descriptive-reference annotations`);
   }

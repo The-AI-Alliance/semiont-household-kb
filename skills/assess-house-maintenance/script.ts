@@ -115,7 +115,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const gather = await semiont.gather.annotation(seedAnno.id, seedSubsystemId, { contextWindow: 2000 });
+  const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
   const context = gather.response as GatheredContext;
 
   // Build a manifest of subsystems + their event counts for the prompt

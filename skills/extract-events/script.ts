@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   let synthesized = 0;
   let skipped = 0;
   for (const d of dateAnnos) {
-    const gather = await semiont.gather.annotation(d.annId, d.rId, { contextWindow: 1200 });
+    const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
     const context = gather.response as GatheredContext;
     const ctxText = (context as any).text ?? (context as any).content ?? '';
     if (typeof ctxText === 'string' && ctxText.length < MIN_DATE_CONTEXT) {

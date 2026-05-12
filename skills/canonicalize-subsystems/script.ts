@@ -146,7 +146,7 @@ async function main(): Promise<void> {
   let synthesized = 0;
   for (const [key, anns] of clusters) {
     const sample = anns[0];
-    const gather = await semiont.gather.annotation(sample.annId, sample.rId, { contextWindow: 1500 });
+    const gather = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
     const context = gather.response as GatheredContext;
     const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
       limit: 5,

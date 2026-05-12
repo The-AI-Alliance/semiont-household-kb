@@ -111,7 +111,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const gather = await semiont.gather.annotation(seedAnno.id, seedRId, { contextWindow: 1500 });
+    const gather = await semiont.gather.annotation(seedRId, seedAnno.id, { contextWindow: 1500 });
     const context = gather.response as GatheredContext;
 
     const eventList = vendorEvents
