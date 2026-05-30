@@ -5,10 +5,12 @@
  */
 
 import {
-  SemiontClient,
+  SemiontSession,
+  InMemorySessionStorage,
   resourceId as ridBrand,
   type AnnotationId,
   type GatheredContext,
+  type KnowledgeBase,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
@@ -49,11 +51,18 @@ interface DateAnno {
 }
 
 async function main(): Promise<void> {
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'household-extract-events',
+    label: 'household extract-events',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   const all = await semiont.browse.resources({ limit: 1000 });
   const markdown = all.filter((r) => {
@@ -94,7 +103,7 @@ async function main(): Promise<void> {
 
   if (dateAnnos.length === 0) {
     console.log('No Date annotations found. Run skills/mark-house-entities/script.ts first.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -102,7 +111,7 @@ async function main(): Promise<void> {
   console.log(`Found ${dateAnnos.length} Date annotation(s) to consider for Event extraction.`);
   const proceed = await confirm('Proceed?', true);
   if (!proceed) {
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -138,7 +147,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`\nDone. Synthesized ${synthesized} Event resources; ${skipped} dates skipped (insufficient context).`);
-  semiont.dispose();
+  await session.dispose();
   closeInteractive();
 }
 

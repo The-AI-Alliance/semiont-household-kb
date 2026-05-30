@@ -5,9 +5,11 @@
  */
 
 import {
-  SemiontClient,
+  SemiontSession,
+  InMemorySessionStorage,
   resourceId as ridBrand,
   type GatheredContext,
+  type KnowledgeBase,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
@@ -35,11 +37,18 @@ function slugify(text: string): string {
 async function main(): Promise<void> {
   const vendorArg = parseVendorArg();
 
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'household-vendor-track-record',
+    label: 'household vendor-track-record',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   const all = await semiont.browse.resources({ limit: 5000 });
   const vendors = vendorArg
@@ -55,7 +64,7 @@ async function main(): Promise<void> {
 
   if (vendors.length === 0) {
     console.log('No canonical Vendor resources. Run skills/canonicalize-vendors first.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -63,7 +72,7 @@ async function main(): Promise<void> {
   console.log(`Will synthesize VendorTrackRecord for ${vendors.length} Vendor(s).`);
   const proceed = await confirm('Proceed?', true);
   if (!proceed) {
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -143,7 +152,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`\nDone. Synthesized ${synthesized} VendorTrackRecord resource(s).`);
-  semiont.dispose();
+  await session.dispose();
   closeInteractive();
 }
 

@@ -6,9 +6,11 @@
  */
 
 import {
-  SemiontClient,
+  SemiontSession,
+  InMemorySessionStorage,
   resourceId as ridBrand,
   type GatheredContext,
+  type KnowledgeBase,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
@@ -40,11 +42,18 @@ function slugify(text: string): string {
 }
 
 async function main(): Promise<void> {
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'household-assess-house-maintenance',
+    label: 'household assess-house-maintenance',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   const all = await semiont.browse.resources({ limit: 5000 });
   const subsystems = all.filter((r) => {
@@ -62,7 +71,7 @@ async function main(): Promise<void> {
 
   if (subsystems.length === 0) {
     console.log('No canonical Subsystem resources. Run skills/canonicalize-subsystems first.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -72,7 +81,7 @@ async function main(): Promise<void> {
   );
   const proceed = await confirm('Proceed?', true);
   if (!proceed) {
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -107,7 +116,7 @@ async function main(): Promise<void> {
   const seedSubsystem = sortedSubsystems[0];
   if (!seedSubsystem) {
     console.error('No Subsystem resources to seed from.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -117,7 +126,7 @@ async function main(): Promise<void> {
 
   if (!seedAnno) {
     console.error('Seed Subsystem has no annotations to gather from.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -125,7 +134,7 @@ async function main(): Promise<void> {
   const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
   if (!('response' in gather)) {
     console.error('gather.annotation did not return a Complete event');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -158,14 +167,14 @@ async function main(): Promise<void> {
   });
   if (yieldEvent.kind !== 'complete') {
     console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
   const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
   console.log(`\n✓ MaintenanceAssessment synthesized: ${resourceId}`);
 
-  semiont.dispose();
+  await session.dispose();
   closeInteractive();
 }
 

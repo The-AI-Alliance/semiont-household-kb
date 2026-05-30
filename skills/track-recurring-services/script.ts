@@ -5,7 +5,7 @@
  * Usage: tsx skills/track-recurring-services/script.ts [--interactive]
  */
 
-import { SemiontClient, resourceId as ridBrand } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KnowledgeBase } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 const MIN_OCCURRENCES = Number(process.env.MIN_OCCURRENCES ?? 3);
@@ -66,11 +66,18 @@ function parseEventBody(body: string): { date: Date | null; subsystem: string | 
 }
 
 async function main(): Promise<void> {
-  const semiont = await SemiontClient.signInHttp({
-    baseUrl: process.env.SEMIONT_API_URL ?? 'http://localhost:4000',
-    email: process.env.SEMIONT_USER_EMAIL!,
-    password: process.env.SEMIONT_USER_PASSWORD!,
-  });
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KnowledgeBase = {
+    id: 'household-track-recurring-services',
+    label: 'household track-recurring-services',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   const all = await semiont.browse.resources({ limit: 5000 });
   const events = all.filter((r) => {
@@ -80,7 +87,7 @@ async function main(): Promise<void> {
 
   if (events.length === 0) {
     console.log('No Event resources. Run skills/extract-events/script.ts first.');
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -114,7 +121,7 @@ async function main(): Promise<void> {
   console.log(`Grouped into ${groups.size} potential schedule(s) (min ${MIN_OCCURRENCES} occurrences to count).`);
   const proceed = await confirm('Proceed?', true);
   if (!proceed) {
-    semiont.dispose();
+    await session.dispose();
     closeInteractive();
     return;
   }
@@ -172,7 +179,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`\nDone. Synthesized ${schedules} ServiceSchedule resources; ${overdue} overdue.`);
-  semiont.dispose();
+  await session.dispose();
   closeInteractive();
 }
 
