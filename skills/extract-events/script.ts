@@ -64,91 +64,92 @@ async function main(): Promise<void> {
   const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
   const semiont = session.client;
 
-  const all = await semiont.browse.resources({ limit: 1000 });
-  const markdown = all.filter((r) => {
-    const mt = getMediaType(r);
-    return mt === 'text/markdown' || mt === 'text/plain';
-  });
-
-  const dateAnnos: DateAnno[] = [];
-  for (const r of markdown) {
-    const rId = ridBrand(r['@id']);
-    const annotations = await semiont.browse.annotations(rId);
-    for (const ann of annotations) {
-      if (ann.motivation !== 'linking') continue;
-      const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
-      const tags = bodies
-        .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
-        .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]));
-      if (!tags.includes('Date')) continue;
-
-      const target = ann.target;
-      const selectors =
-        typeof target === 'string' || !target.selector
-          ? []
-          : Array.isArray(target.selector)
-            ? target.selector
-            : [target.selector];
-      let exact = '';
-      let span = 0;
-      for (const s of selectors) {
-        if (s.type === 'TextQuoteSelector') { exact = s.exact; }
-        if (s.type === 'TextPositionSelector') { span = s.end - s.start; }
-      }
-      if (!span) span = exact.length;
-      // Date span itself is short; the test of "context length" comes when we gather
-      dateAnnos.push({ rId, annId: ann.id, text: exact, contextLength: span });
-    }
-  }
-
-  if (dateAnnos.length === 0) {
-    console.log('No Date annotations found. Run skills/mark-house-entities/script.ts first.');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-
-  console.log(`Found ${dateAnnos.length} Date annotation(s) to consider for Event extraction.`);
-  const proceed = await confirm('Proceed?', true);
-  if (!proceed) {
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-
-  let synthesized = 0;
-  let skipped = 0;
-  for (const d of dateAnnos) {
-    const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
-    if (!('response' in gather)) continue;
-    const context = gather.response as GatheredContext;
-    const ctxText = (context as any).text ?? (context as any).content ?? '';
-    if (typeof ctxText === 'string' && ctxText.length < MIN_DATE_CONTEXT) {
-      skipped++;
-      continue;
-    }
-
-    const yieldEvent = await semiont.yield.fromAnnotation(d.rId, d.annId, {
-      title: `Event: ${d.text}`,
-      storageUri: `file://generated/event-${slugify(d.text)}-${d.annId.slice(-6)}.md`,
-      context,
-      entityTypes: ['Event', 'Aggregate'],
-      prompt: EVENT_INSTRUCTIONS,
+  try {
+    const all = await semiont.browse.resources({ limit: 1000 });
+    const markdown = all.filter((r) => {
+      const mt = getMediaType(r);
+      return mt === 'text/markdown' || mt === 'text/plain';
     });
-    if (yieldEvent.kind !== 'complete') continue;
-    const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
-    if (!newResourceId) continue;
 
-    await semiont.bind.body(d.rId, d.annId, [
-      { op: 'add', item: { type: 'SpecificResource', source: newResourceId, purpose: 'linking' } },
-    ]);
-    synthesized++;
-    console.log(`  + ${newResourceId} (date "${d.text}")`);
+    const dateAnnos: DateAnno[] = [];
+    for (const r of markdown) {
+      const rId = ridBrand(r['@id']);
+      const annotations = await semiont.browse.annotations(rId);
+      for (const ann of annotations) {
+        if (ann.motivation !== 'linking') continue;
+        const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
+        const tags = bodies
+          .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
+          .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]));
+        if (!tags.includes('Date')) continue;
+
+        const target = ann.target;
+        const selectors =
+          typeof target === 'string' || !target.selector
+            ? []
+            : Array.isArray(target.selector)
+              ? target.selector
+              : [target.selector];
+        let exact = '';
+        let span = 0;
+        for (const s of selectors) {
+          if (s.type === 'TextQuoteSelector') { exact = s.exact; }
+          if (s.type === 'TextPositionSelector') { span = s.end - s.start; }
+        }
+        if (!span) span = exact.length;
+        // Date span itself is short; the test of "context length" comes when we gather
+        dateAnnos.push({ rId, annId: ann.id, text: exact, contextLength: span });
+      }
+    }
+
+    if (dateAnnos.length === 0) {
+      console.log('No Date annotations found. Run skills/mark-house-entities/script.ts first.');
+      closeInteractive();
+      return;
+    }
+
+    console.log(`Found ${dateAnnos.length} Date annotation(s) to consider for Event extraction.`);
+    const proceed = await confirm('Proceed?', true);
+    if (!proceed) {
+      closeInteractive();
+      return;
+    }
+
+    let synthesized = 0;
+    let skipped = 0;
+    for (const d of dateAnnos) {
+      const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
+      if (!('response' in gather)) continue;
+      const context = gather.response as GatheredContext;
+      const ctxText = (context as any).text ?? (context as any).content ?? '';
+      if (typeof ctxText === 'string' && ctxText.length < MIN_DATE_CONTEXT) {
+        skipped++;
+        continue;
+      }
+
+      const yieldEvent = await semiont.yield.fromAnnotation(d.rId, d.annId, {
+        title: `Event: ${d.text}`,
+        storageUri: `file://generated/event-${slugify(d.text)}-${d.annId.slice(-6)}.md`,
+        context,
+        entityTypes: ['Event', 'Aggregate'],
+        prompt: EVENT_INSTRUCTIONS,
+      });
+      if (yieldEvent.kind !== 'complete') continue;
+      const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+      if (!newResourceId) continue;
+
+      await semiont.bind.body(d.rId, d.annId, [
+        { op: 'add', item: { type: 'SpecificResource', source: newResourceId, purpose: 'linking' } },
+      ]);
+      synthesized++;
+      console.log(`  + ${newResourceId} (date "${d.text}")`);
+    }
+
+    console.log(`\nDone. Synthesized ${synthesized} Event resources; ${skipped} dates skipped (insufficient context).`);
+    closeInteractive();
+  } finally {
+    await session.dispose();
   }
-
-  console.log(`\nDone. Synthesized ${synthesized} Event resources; ${skipped} dates skipped (insufficient context).`);
-  await session.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {

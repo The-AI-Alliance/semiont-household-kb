@@ -63,135 +63,132 @@ async function main(): Promise<void> {
   const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
   const semiont = session.client;
 
-  const all = await semiont.browse.resources({ limit: 5000 });
-  const subsystems = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('Subsystem');
-  });
-  const events = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('Event');
-  });
-  const schedules = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('ServiceSchedule');
-  });
+  try {
+    const all = await semiont.browse.resources({ limit: 5000 });
+    const subsystems = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('Subsystem');
+    });
+    const events = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('Event');
+    });
+    const schedules = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('ServiceSchedule');
+    });
 
-  if (subsystems.length === 0) {
-    console.log('No canonical Subsystem resources. Run skills/canonicalize-subsystems first.');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
+    if (subsystems.length === 0) {
+      console.log('No canonical Subsystem resources. Run skills/canonicalize-subsystems first.');
+      closeInteractive();
+      return;
+    }
 
-  console.log(
-    `Considering ${subsystems.length} Subsystem(s), ${events.length} Event(s), ${schedules.length} schedule(s).`,
-  );
-  const proceed = await confirm('Proceed?', true);
-  if (!proceed) {
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
+    console.log(
+      `Considering ${subsystems.length} Subsystem(s), ${events.length} Event(s), ${schedules.length} schedule(s).`,
+    );
+    const proceed = await confirm('Proceed?', true);
+    if (!proceed) {
+      closeInteractive();
+      return;
+    }
 
-  // Build a lifespan-default manifest the LLM can use as a prior
-  const lifespanLines = subsystems
-    .slice(0, 30)
-    .map((s) => {
-      const name = ((s as any).name ?? '').toString().toLowerCase();
-      const types: string[] = (s as any).entityTypes ?? [];
-      const guessKey = name.includes('water heater')
-        ? 'water-heater-tank'
-        : name.includes('furnace')
-          ? 'furnace'
-          : name.includes('roof')
-            ? 'roof-asphalt-shingle-architectural'
-            : name.includes('panel') || types.includes('Electrical')
-              ? 'electrical-panel'
-              : name.includes('water main')
-                ? 'water-main-copper'
-                : name.includes('washer') || name.includes('dryer') || name.includes('dishwasher')
-                  ? 'dishwasher'
-                  : 'unknown';
-      const range = lookupLifespan(guessKey);
-      return `- ${(s as any).name} (\`${s['@id']}\`) — typical lifespan ${range.minYears}–${range.maxYears} years`;
-    })
-    .join('\n');
+    // Build a lifespan-default manifest the LLM can use as a prior
+    const lifespanLines = subsystems
+      .slice(0, 30)
+      .map((s) => {
+        const name = ((s as any).name ?? '').toString().toLowerCase();
+        const types: string[] = (s as any).entityTypes ?? [];
+        const guessKey = name.includes('water heater')
+          ? 'water-heater-tank'
+          : name.includes('furnace')
+            ? 'furnace'
+            : name.includes('roof')
+              ? 'roof-asphalt-shingle-architectural'
+              : name.includes('panel') || types.includes('Electrical')
+                ? 'electrical-panel'
+                : name.includes('water main')
+                  ? 'water-main-copper'
+                  : name.includes('washer') || name.includes('dryer') || name.includes('dishwasher')
+                    ? 'dishwasher'
+                    : 'unknown';
+        const range = lookupLifespan(guessKey);
+        return `- ${(s as any).name} (\`${s['@id']}\`) — typical lifespan ${range.minYears}–${range.maxYears} years`;
+      })
+      .join('\n');
 
-  // Pick a seed: subsystem with the most events
-  const eventsBySubsystem = new Map<string, number>();
-  for (const ev of events) {
-    const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
-    for (const a of evAnnos) {
-      const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
-      const targets = bodies.filter(
-        (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
-      );
-      for (const t of targets) {
-        const targetId = (t as any).source as string;
-        eventsBySubsystem.set(targetId, (eventsBySubsystem.get(targetId) ?? 0) + 1);
+    // Pick a seed: subsystem with the most events
+    const eventsBySubsystem = new Map<string, number>();
+    for (const ev of events) {
+      const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
+      for (const a of evAnnos) {
+        const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
+        const targets = bodies.filter(
+          (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
+        );
+        for (const t of targets) {
+          const targetId = (t as any).source as string;
+          eventsBySubsystem.set(targetId, (eventsBySubsystem.get(targetId) ?? 0) + 1);
+        }
       }
     }
-  }
-  const seedSubsystem =
-    [...subsystems].sort((a, b) =>
-      (eventsBySubsystem.get(b['@id']) ?? 0) - (eventsBySubsystem.get(a['@id']) ?? 0),
-    )[0];
-  if (!seedSubsystem) {
-    console.error('No Subsystem resources to seed from.');
-    await session.dispose();
+    const seedSubsystem =
+      [...subsystems].sort((a, b) =>
+        (eventsBySubsystem.get(b['@id']) ?? 0) - (eventsBySubsystem.get(a['@id']) ?? 0),
+      )[0];
+    if (!seedSubsystem) {
+      console.error('No Subsystem resources to seed from.');
+      closeInteractive();
+      return;
+    }
+    const seedSubsystemId = ridBrand(seedSubsystem['@id']);
+    const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
+    const seedAnno = seedAnnos[0];
+    if (!seedAnno) {
+      console.error('Seed Subsystem has no annotations.');
+      closeInteractive();
+      return;
+    }
+
+    const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
+    if (!('response' in gather)) {
+      console.error('gather.annotation did not return a Complete event');
+      closeInteractive();
+      return;
+    }
+    const context = gather.response as GatheredContext;
+
+    const overdueSchedules = schedules
+      .filter((s) => ((s as any).body ?? '').toString().includes('OVERDUE'))
+      .map((s) => `- ${(s as any).name} (\`${s['@id']}\`)`)
+      .join('\n');
+
+    const prepend =
+      `# System Priorities\n\n*Forward-looking 12-month priority ranking. Generated against the current corpus state.*\n\n` +
+      `Lookback window for recent-event signal: ${LOOKBACK_MONTHS} months.\n\n` +
+      `## Subsystems with industry-typical lifespan ranges (showing first 30 of ${subsystems.length})\n\n${lifespanLines}\n\n` +
+      `## Overdue service schedules\n\n${overdueSchedules || '(none surfaced — schedule cadence is on track or insufficient data)'}\n\n` +
+      `---\n\n`;
+
+    const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
+      title: `System Priorities`,
+      storageUri: `file://generated/system-priorities-${new Date().toISOString().slice(0, 10)}.md`,
+      context,
+      entityTypes: ['SystemPriorities', 'Aggregate'],
+      prompt: `${PRIORITIES_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
+    });
+    if (yieldEvent.kind !== 'complete') {
+      console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
+      closeInteractive();
+      return;
+    }
+    const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+    console.log(`\n✓ SystemPriorities synthesized: ${resourceId}`);
+
     closeInteractive();
-    return;
-  }
-  const seedSubsystemId = ridBrand(seedSubsystem['@id']);
-  const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
-  const seedAnno = seedAnnos[0];
-  if (!seedAnno) {
-    console.error('Seed Subsystem has no annotations.');
+  } finally {
     await session.dispose();
-    closeInteractive();
-    return;
   }
-
-  const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
-  if (!('response' in gather)) {
-    console.error('gather.annotation did not return a Complete event');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-  const context = gather.response as GatheredContext;
-
-  const overdueSchedules = schedules
-    .filter((s) => ((s as any).body ?? '').toString().includes('OVERDUE'))
-    .map((s) => `- ${(s as any).name} (\`${s['@id']}\`)`)
-    .join('\n');
-
-  const prepend =
-    `# System Priorities\n\n*Forward-looking 12-month priority ranking. Generated against the current corpus state.*\n\n` +
-    `Lookback window for recent-event signal: ${LOOKBACK_MONTHS} months.\n\n` +
-    `## Subsystems with industry-typical lifespan ranges (showing first 30 of ${subsystems.length})\n\n${lifespanLines}\n\n` +
-    `## Overdue service schedules\n\n${overdueSchedules || '(none surfaced — schedule cadence is on track or insufficient data)'}\n\n` +
-    `---\n\n`;
-
-  const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
-    title: `System Priorities`,
-    storageUri: `file://generated/system-priorities-${new Date().toISOString().slice(0, 10)}.md`,
-    context,
-    entityTypes: ['SystemPriorities', 'Aggregate'],
-    prompt: `${PRIORITIES_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
-  });
-  if (yieldEvent.kind !== 'complete') {
-    console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-  const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
-  console.log(`\n✓ SystemPriorities synthesized: ${resourceId}`);
-
-  await session.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {

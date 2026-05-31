@@ -55,127 +55,124 @@ async function main(): Promise<void> {
   const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
   const semiont = session.client;
 
-  const all = await semiont.browse.resources({ limit: 5000 });
-  const subsystems = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('Subsystem');
-  });
-  const events = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('Event');
-  });
-  const schedules = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('ServiceSchedule');
-  });
+  try {
+    const all = await semiont.browse.resources({ limit: 5000 });
+    const subsystems = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('Subsystem');
+    });
+    const events = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('Event');
+    });
+    const schedules = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('ServiceSchedule');
+    });
 
-  if (subsystems.length === 0) {
-    console.log('No canonical Subsystem resources. Run skills/canonicalize-subsystems first.');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
+    if (subsystems.length === 0) {
+      console.log('No canonical Subsystem resources. Run skills/canonicalize-subsystems first.');
+      closeInteractive();
+      return;
+    }
 
-  console.log(
-    `Found ${subsystems.length} Subsystem(s), ${events.length} Event(s), ${schedules.length} ServiceSchedule(s).`,
-  );
-  const proceed = await confirm('Proceed?', true);
-  if (!proceed) {
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
+    console.log(
+      `Found ${subsystems.length} Subsystem(s), ${events.length} Event(s), ${schedules.length} ServiceSchedule(s).`,
+    );
+    const proceed = await confirm('Proceed?', true);
+    if (!proceed) {
+      closeInteractive();
+      return;
+    }
 
-  // For each subsystem, find the events that point at it (via descriptor binding)
-  const eventsBySubsystem = new Map<string, typeof events>();
-  for (const ev of events) {
-    const evId = ridBrand(ev['@id']);
-    const evAnnos = await semiont.browse.annotations(evId);
-    for (const a of evAnnos) {
-      const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
-      const targets = bodies.filter(
-        (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
-      );
-      for (const t of targets) {
-        const targetId = (t as any).source as string;
-        const target = all.find((x) => x['@id'] === targetId);
-        const types: string[] = (target as any)?.entityTypes ?? [];
-        if (!types.includes('Subsystem')) continue;
-        if (!eventsBySubsystem.has(targetId)) eventsBySubsystem.set(targetId, []);
-        eventsBySubsystem.get(targetId)!.push(ev);
+    // For each subsystem, find the events that point at it (via descriptor binding)
+    const eventsBySubsystem = new Map<string, typeof events>();
+    for (const ev of events) {
+      const evId = ridBrand(ev['@id']);
+      const evAnnos = await semiont.browse.annotations(evId);
+      for (const a of evAnnos) {
+        const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
+        const targets = bodies.filter(
+          (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
+        );
+        for (const t of targets) {
+          const targetId = (t as any).source as string;
+          const target = all.find((x) => x['@id'] === targetId);
+          const types: string[] = (target as any)?.entityTypes ?? [];
+          if (!types.includes('Subsystem')) continue;
+          if (!eventsBySubsystem.has(targetId)) eventsBySubsystem.set(targetId, []);
+          eventsBySubsystem.get(targetId)!.push(ev);
+        }
       }
     }
-  }
 
-  // Pick a seed: subsystem with the most events
-  const sortedSubsystems = [...subsystems].sort(
-    (a, b) =>
-      (eventsBySubsystem.get(b['@id'])?.length ?? 0) -
-      (eventsBySubsystem.get(a['@id'])?.length ?? 0),
-  );
-  const seedSubsystem = sortedSubsystems[0];
-  if (!seedSubsystem) {
-    console.error('No Subsystem resources to seed from.');
-    await session.dispose();
+    // Pick a seed: subsystem with the most events
+    const sortedSubsystems = [...subsystems].sort(
+      (a, b) =>
+        (eventsBySubsystem.get(b['@id'])?.length ?? 0) -
+        (eventsBySubsystem.get(a['@id'])?.length ?? 0),
+    );
+    const seedSubsystem = sortedSubsystems[0];
+    if (!seedSubsystem) {
+      console.error('No Subsystem resources to seed from.');
+      closeInteractive();
+      return;
+    }
+    const seedSubsystemId = ridBrand(seedSubsystem['@id']);
+    const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
+    const seedAnno = seedAnnos[0];
+
+    if (!seedAnno) {
+      console.error('Seed Subsystem has no annotations to gather from.');
+      closeInteractive();
+      return;
+    }
+
+    const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
+    if (!('response' in gather)) {
+      console.error('gather.annotation did not return a Complete event');
+      closeInteractive();
+      return;
+    }
+    const context = gather.response as GatheredContext;
+
+    // Build a manifest of subsystems + their event counts for the prompt
+    const manifest = sortedSubsystems
+      .slice(0, 30)
+      .map((s) => {
+        const n = eventsBySubsystem.get(s['@id'])?.length ?? 0;
+        return `- ${(s as any).name} (\`${s['@id']}\`) — ${n} events`;
+      })
+      .join('\n');
+
+    const scheduleManifest = schedules
+      .map((sc) => `- ${(sc as any).name} (\`${sc['@id']}\`)`)
+      .join('\n');
+
+    const prepend =
+      `# Maintenance Assessment\n\n*Generated against the current corpus state.*\n\n` +
+      `## Subsystems considered (showing first 30 of ${subsystems.length})\n\n${manifest}\n\n` +
+      `## Service schedules\n\n${scheduleManifest || '(none)'}\n\n---\n\n`;
+
+    const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
+      title: `Maintenance Assessment`,
+      storageUri: `file://generated/maintenance-assessment.md`,
+      context,
+      entityTypes: ['MaintenanceAssessment', 'Aggregate'],
+      prompt: `${ASSESSMENT_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
+    });
+    if (yieldEvent.kind !== 'complete') {
+      console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
+      closeInteractive();
+      return;
+    }
+    const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+    console.log(`\n✓ MaintenanceAssessment synthesized: ${resourceId}`);
+
     closeInteractive();
-    return;
-  }
-  const seedSubsystemId = ridBrand(seedSubsystem['@id']);
-  const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
-  const seedAnno = seedAnnos[0];
-
-  if (!seedAnno) {
-    console.error('Seed Subsystem has no annotations to gather from.');
+  } finally {
     await session.dispose();
-    closeInteractive();
-    return;
   }
-
-  const gather = await semiont.gather.annotation(seedSubsystemId, seedAnno.id, { contextWindow: 2000 });
-  if (!('response' in gather)) {
-    console.error('gather.annotation did not return a Complete event');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-  const context = gather.response as GatheredContext;
-
-  // Build a manifest of subsystems + their event counts for the prompt
-  const manifest = sortedSubsystems
-    .slice(0, 30)
-    .map((s) => {
-      const n = eventsBySubsystem.get(s['@id'])?.length ?? 0;
-      return `- ${(s as any).name} (\`${s['@id']}\`) — ${n} events`;
-    })
-    .join('\n');
-
-  const scheduleManifest = schedules
-    .map((sc) => `- ${(sc as any).name} (\`${sc['@id']}\`)`)
-    .join('\n');
-
-  const prepend =
-    `# Maintenance Assessment\n\n*Generated against the current corpus state.*\n\n` +
-    `## Subsystems considered (showing first 30 of ${subsystems.length})\n\n${manifest}\n\n` +
-    `## Service schedules\n\n${scheduleManifest || '(none)'}\n\n---\n\n`;
-
-  const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
-    title: `Maintenance Assessment`,
-    storageUri: `file://generated/maintenance-assessment.md`,
-    context,
-    entityTypes: ['MaintenanceAssessment', 'Aggregate'],
-    prompt: `${ASSESSMENT_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
-  });
-  if (yieldEvent.kind !== 'complete') {
-    console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-  const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
-  console.log(`\n✓ MaintenanceAssessment synthesized: ${resourceId}`);
-
-  await session.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {

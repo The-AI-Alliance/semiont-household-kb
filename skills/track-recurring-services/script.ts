@@ -79,108 +79,109 @@ async function main(): Promise<void> {
   const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
   const semiont = session.client;
 
-  const all = await semiont.browse.resources({ limit: 5000 });
-  const events = all.filter((r) => {
-    const types: string[] = (r as any).entityTypes ?? [];
-    return types.includes('Event');
-  });
-
-  if (events.length === 0) {
-    console.log('No Event resources. Run skills/extract-events/script.ts first.');
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-
-  console.log(`Found ${events.length} Event resource(s).`);
-
-  // Parse each Event
-  const records: EventRecord[] = [];
-  for (const e of events) {
-    const body = ((e as any).body ?? (e as any).text ?? '').toString();
-    const fields = parseEventBody(body);
-    if (!fields.date) continue;
-    records.push({
-      resourceId: e['@id'],
-      date: fields.date,
-      subsystem: fields.subsystem,
-      vendor: fields.vendor,
-      kind: fields.kind,
-      raw: e,
+  try {
+    const all = await semiont.browse.resources({ limit: 5000 });
+    const events = all.filter((r) => {
+      const types: string[] = (r as any).entityTypes ?? [];
+      return types.includes('Event');
     });
-  }
 
-  // Group by (subsystem || 'unspecified', vendor || 'unspecified', kind || 'service')
-  const groups = new Map<string, EventRecord[]>();
-  for (const r of records) {
-    const key = `${r.subsystem ?? 'unspecified-system'} | ${r.vendor ?? 'unspecified-vendor'} | ${r.kind ?? 'service'}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(r);
-  }
-
-  console.log(`Grouped into ${groups.size} potential schedule(s) (min ${MIN_OCCURRENCES} occurrences to count).`);
-  const proceed = await confirm('Proceed?', true);
-  if (!proceed) {
-    await session.dispose();
-    closeInteractive();
-    return;
-  }
-
-  let schedules = 0;
-  let overdue = 0;
-
-  for (const [groupKey, gEvents] of groups) {
-    if (gEvents.length < MIN_OCCURRENCES) continue;
-
-    const sorted = [...gEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
-    const intervals: number[] = [];
-    for (let i = 1; i < sorted.length; i++) {
-      const curr = sorted[i];
-      const prev = sorted[i - 1];
-      if (!curr || !prev) continue;
-      const days = (curr.date.getTime() - prev.date.getTime()) / 86400000;
-      intervals.push(days);
+    if (events.length === 0) {
+      console.log('No Event resources. Run skills/extract-events/script.ts first.');
+      closeInteractive();
+      return;
     }
-    const med = median(intervals);
-    const cv = coefficientOfVariation(intervals);
-    const cadence = cv > IRREGULAR_TOLERANCE ? 'irregular' : classifyCadence(med);
 
-    const lastEvent = sorted[sorted.length - 1];
-    if (!lastEvent) continue;
-    const last = lastEvent.date;
-    const projectedNext = new Date(last.getTime() + med * 86400000);
-    const today = new Date();
-    const isOverdue = projectedNext.getTime() < today.getTime();
-    if (isOverdue) overdue++;
+    console.log(`Found ${events.length} Event resource(s).`);
 
-    const eventLinks = sorted.map((e) => `- [${e.date.toISOString().slice(0, 10)}](${e.resourceId})`).join('\n');
+    // Parse each Event
+    const records: EventRecord[] = [];
+    for (const e of events) {
+      const body = ((e as any).body ?? (e as any).text ?? '').toString();
+      const fields = parseEventBody(body);
+      if (!fields.date) continue;
+      records.push({
+        resourceId: e['@id'],
+        date: fields.date,
+        subsystem: fields.subsystem,
+        vendor: fields.vendor,
+        kind: fields.kind,
+        raw: e,
+      });
+    }
 
-    const body =
-      `# Service Schedule\n\n*${groupKey}*\n\n` +
-      `## Inferred cadence\n\n` +
-      `- Cadence: **${cadence}**\n` +
-      `- Median interval: ${med.toFixed(0)} days\n` +
-      `- Coefficient of variation: ${cv.toFixed(2)}${cv > IRREGULAR_TOLERANCE ? ' (high — schedule is irregular)' : ''}\n` +
-      `- Number of occurrences: ${sorted.length}\n\n` +
-      `## Last and next\n\n` +
-      `- Last occurrence: ${last.toISOString().slice(0, 10)}\n` +
-      `- Projected next: ${projectedNext.toISOString().slice(0, 10)}${isOverdue ? ' **OVERDUE**' : ''}\n\n` +
-      `## Event history\n\n${eventLinks}\n`;
+    // Group by (subsystem || 'unspecified', vendor || 'unspecified', kind || 'service')
+    const groups = new Map<string, EventRecord[]>();
+    for (const r of records) {
+      const key = `${r.subsystem ?? 'unspecified-system'} | ${r.vendor ?? 'unspecified-vendor'} | ${r.kind ?? 'service'}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    }
 
-    const yieldResult = await semiont.yield.resource({
-      name: `Schedule: ${groupKey}`,
-      file: Buffer.from(body, 'utf-8'),
-      format: 'text/markdown',
-      entityTypes: ['ServiceSchedule', 'Aggregate'],
-      storageUri: `file://generated/schedule-${groupKey.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.md`,
-    });
-    schedules++;
-    console.log(`  + ${yieldResult.resourceId}: ${groupKey} — ${cadence} (${sorted.length} events, ${isOverdue ? 'OVERDUE' : 'on track'})`);
+    console.log(`Grouped into ${groups.size} potential schedule(s) (min ${MIN_OCCURRENCES} occurrences to count).`);
+    const proceed = await confirm('Proceed?', true);
+    if (!proceed) {
+      closeInteractive();
+      return;
+    }
+
+    let schedules = 0;
+    let overdue = 0;
+
+    for (const [groupKey, gEvents] of groups) {
+      if (gEvents.length < MIN_OCCURRENCES) continue;
+
+      const sorted = [...gEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+      const intervals: number[] = [];
+      for (let i = 1; i < sorted.length; i++) {
+        const curr = sorted[i];
+        const prev = sorted[i - 1];
+        if (!curr || !prev) continue;
+        const days = (curr.date.getTime() - prev.date.getTime()) / 86400000;
+        intervals.push(days);
+      }
+      const med = median(intervals);
+      const cv = coefficientOfVariation(intervals);
+      const cadence = cv > IRREGULAR_TOLERANCE ? 'irregular' : classifyCadence(med);
+
+      const lastEvent = sorted[sorted.length - 1];
+      if (!lastEvent) continue;
+      const last = lastEvent.date;
+      const projectedNext = new Date(last.getTime() + med * 86400000);
+      const today = new Date();
+      const isOverdue = projectedNext.getTime() < today.getTime();
+      if (isOverdue) overdue++;
+
+      const eventLinks = sorted.map((e) => `- [${e.date.toISOString().slice(0, 10)}](${e.resourceId})`).join('\n');
+
+      const body =
+        `# Service Schedule\n\n*${groupKey}*\n\n` +
+        `## Inferred cadence\n\n` +
+        `- Cadence: **${cadence}**\n` +
+        `- Median interval: ${med.toFixed(0)} days\n` +
+        `- Coefficient of variation: ${cv.toFixed(2)}${cv > IRREGULAR_TOLERANCE ? ' (high — schedule is irregular)' : ''}\n` +
+        `- Number of occurrences: ${sorted.length}\n\n` +
+        `## Last and next\n\n` +
+        `- Last occurrence: ${last.toISOString().slice(0, 10)}\n` +
+        `- Projected next: ${projectedNext.toISOString().slice(0, 10)}${isOverdue ? ' **OVERDUE**' : ''}\n\n` +
+        `## Event history\n\n${eventLinks}\n`;
+
+      const yieldResult = await semiont.yield.resource({
+        name: `Schedule: ${groupKey}`,
+        file: Buffer.from(body, 'utf-8'),
+        format: 'text/markdown',
+        entityTypes: ['ServiceSchedule', 'Aggregate'],
+        storageUri: `file://generated/schedule-${groupKey.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.md`,
+      });
+      schedules++;
+      console.log(`  + ${yieldResult.resourceId}: ${groupKey} — ${cadence} (${sorted.length} events, ${isOverdue ? 'OVERDUE' : 'on track'})`);
+    }
+
+    console.log(`\nDone. Synthesized ${schedules} ServiceSchedule resources; ${overdue} overdue.`);
+    closeInteractive();
+  } finally {
+    await session.dispose();
   }
-
-  console.log(`\nDone. Synthesized ${schedules} ServiceSchedule resources; ${overdue} overdue.`);
-  await session.dispose();
-  closeInteractive();
 }
 
 main().catch((e) => {
