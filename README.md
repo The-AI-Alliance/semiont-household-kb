@@ -48,7 +48,7 @@ Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont)
 
 ```bash
 gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
-gh codespace ports forward 4000:4000
+gh codespace ports forward 3000:3000 4000:4000
 gh codespace ssh -- cat .devcontainer/admin.json
 ```
 
