@@ -1,7 +1,6 @@
 # Household Knowledge Base (Synthetic Documents)
 
 [![Lint](https://github.com/The-AI-Alliance/semiont-household-kb/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/The-AI-Alliance/semiont-household-kb/actions/workflows/lint.yml?query=branch%3Amain)
-[![Build](https://github.com/The-AI-Alliance/semiont-household-kb/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/The-AI-Alliance/semiont-household-kb/actions/workflows/build.yml?query=branch%3Amain)
 [![License](https://img.shields.io/github/license/The-AI-Alliance/semiont-household-kb)](https://github.com/The-AI-Alliance/semiont-household-kb/blob/main/LICENSE)
 
 A collection of **synthetic but realistic household-property documents** — service receipts, contractor emails, manuals, inspection reports, utility bills, mortgage statements, HOA notices, neighborhood communications — formatted for demonstration of personal-property annotation and decisional-aggregate workflows with [Semiont](https://github.com/The-AI-Alliance/semiont).
