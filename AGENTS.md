@@ -87,14 +87,15 @@ A real-world deployment of this KB carries the family's address, financial detai
 
 ## Working in containers — do not install npm packages on the host
 
-This template assumes a containerized workflow. The backend stack runs in containers (`.semiont/scripts/start.sh` brings it up); the skills run in containers too.
+This template assumes a containerized workflow. The backend stack runs in containers (`semiont start` brings it up); the skills run in containers too.
 
 ## Backend setup
 
-### Local: `start.sh`
+### Local: `semiont start`
 
 ```bash
-.semiont/scripts/start.sh --email admin@example.com --password password --observe
+brew install the-ai-alliance/semiont/semiont   # once
+semiont start --email admin@example.com --password password
 ```
 
 ### Codespaces (synthetic data only)
