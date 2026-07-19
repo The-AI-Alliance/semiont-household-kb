@@ -95,7 +95,8 @@ This template assumes a containerized workflow. The backend stack runs in contai
 
 ```bash
 brew install the-ai-alliance/semiont/semiont   # once
-semiont start --email admin@example.com --password password
+semiont start
+semiont useradd --email admin@example.com --password password --admin
 ```
 
 ### Codespaces (synthetic data only)
