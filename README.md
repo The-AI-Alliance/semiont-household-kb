@@ -46,11 +46,36 @@ Explore this dataset using [Semiont](https://github.com/The-AI-Alliance/semiont)
 
 ### Open in Codespaces
 
+**Prerequisites:** the [Semiont launcher](https://github.com/The-AI-Alliance/semiont/tree/main/apps/launcher) (`brew install the-ai-alliance/semiont/semiont`) and the [GitHub CLI (`gh`)](https://cli.github.com/), signed in with `gh auth login`.
+
+> **Before creating:** add `ANTHROPIC_API_KEY` as a [user secret](https://github.com/settings/codespaces) with this repo selected. Otherwise the backend comes up but inference is non-functional until you add the secret and rebuild the container.
+
+One command creates the codespace (or resumes the one you already have), waits for the stack to answer, forwards the KB to your machine, and prints the auto-generated admin credentials:
+
+```bash
+semiont start --runtime codespace --repo The-AI-Alliance/semiont-household-kb
+```
+
+The browser runs **locally** and connects to any number of knowledge bases — cloud or local:
+
+```bash
+semiont start --service frontend
+```
+
+Open **http://localhost:3000** and add the KB in the **Knowledge Bases** panel, using the port and credentials the launcher printed (`semiont status` re-prints them). `semiont stop --repo The-AI-Alliance/semiont-household-kb` halts billing and keeps your state; add `--delete` to destroy the codespace.
+
+<details>
+<summary>Without the launcher: the raw <code>gh</code> recipe</summary>
+
 ```bash
 gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
-gh codespace ports forward 3000:3000 4000:4000
-gh codespace ssh -- cat .devcontainer/admin.json
+gh codespace ports forward 3000:3000 4000:4000   # leave running
+gh codespace ssh -- cat .devcontainer/admin.json # in another terminal
 ```
+
+This forwards the codespace's own browser as well, so you open **http://localhost:3000** and sign in with those credentials. If `gh` rejects the forward with `must have admin rights to Repository`, grant the scope once: `gh auth refresh -h github.com -s codespace`.
+
+</details>
 
 > **Privacy.** This synthetic dataset poses no privacy risk; a real personal-property KB deployment with actual addresses, vendor contracts, and mortgage details should use the local-first start path rather than Codespaces. See [`PERSONAL-KB-EXPLORATION.md`](https://github.com/The-AI-Alliance/semiont-household-kb/blob/main/PERSONAL-KB-EXPLORATION.md#privacy-as-a-first-order-design-concern) for the longer discussion.
 
