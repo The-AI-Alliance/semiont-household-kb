@@ -101,7 +101,7 @@ semiont start
 Then create the admin user you'll sign in with:
 
 ```bash
-semiont useradd --email admin@example.com --password password --admin
+semiont useradd --email admin@example.com --admin
 ```
 
 ### Codespaces (synthetic data only)
@@ -109,7 +109,8 @@ semiont useradd --email admin@example.com --password password --admin
 ```bash
 gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
 gh codespace ports forward 4000:4000
-gh codespace ssh -- cat .devcontainer/admin.json
+gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
+  exec -T backend semiont-useradd --email you@example.com --generate-password --admin'
 ```
 
 ## Background reading
