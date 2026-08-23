@@ -9,7 +9,7 @@ import {
   InMemorySessionStorage,
   resourceId as ridBrand,
   type GatheredContext,
-  type KnowledgeBase,
+  type KbTarget,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-vendor-track-record',
     label: 'household vendor-track-record',
     email,
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 5000 });
+    const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const vendors = vendorArg
       ? all.filter((r) => r['@id'] === vendorArg)
       : all.filter((r) => {
@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     // Build a map of events per vendor by walking event-annotation bodies
     const eventsByVendor = new Map<string, typeof events>();
     for (const ev of events) {
-      const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
+      const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id'])).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
         const targets = bodies.filter(
@@ -109,12 +109,12 @@ async function main(): Promise<void> {
 
       // Seed gather: prefer the vendor canonical's own annotations, fall back to first event
       let seedRId = vendorId;
-      let seedAnnos = await semiont.browse.annotations(vendorId);
+      let seedAnnos = await semiont.browse.annotations(vendorId).fresh();
       if (seedAnnos.length === 0 && vendorEvents.length > 0) {
         const firstEvent = vendorEvents[0];
         if (firstEvent) {
           seedRId = ridBrand(firstEvent['@id']);
-          seedAnnos = await semiont.browse.annotations(seedRId);
+          seedAnnos = await semiont.browse.annotations(seedRId).fresh();
         }
       }
       const seedAnno = seedAnnos[0];

@@ -10,7 +10,7 @@ import {
   InMemorySessionStorage,
   resourceId as ridBrand,
   type GatheredContext,
-  type KnowledgeBase,
+  type KbTarget,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { lookupLifespan } from '../../src/lifespan-data.js';
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-prioritize-house-systems',
     label: 'household prioritize-house-systems',
     email,
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 5000 });
+    const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const subsystems = all.filter((r) => {
       const types: string[] = (r as any).entityTypes ?? [];
       return types.includes('Subsystem');
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     // Pick a seed: subsystem with the most events
     const eventsBySubsystem = new Map<string, number>();
     for (const ev of events) {
-      const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id']));
+      const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id'])).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
         const targets = bodies.filter(
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
       return;
     }
     const seedSubsystemId = ridBrand(seedSubsystem['@id']);
-    const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
+    const seedAnnos = await semiont.browse.annotations(seedSubsystemId).fresh();
     const seedAnno = seedAnnos[0];
     if (!seedAnno) {
       console.error('Seed Subsystem has no annotations.');

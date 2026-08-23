@@ -15,7 +15,7 @@
  * Usage: tsx skills/mark-house-entities/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, entityType, resourceId as ridBrand, type KnowledgeBase, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, entityType, resourceId as ridBrand, type KbTarget, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { createdCount } from '../../src/mark-result.js';
 
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-mark-house-entities',
     label: 'household mark-house-entities',
     email,
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     if (explicitResourceId) {
       targets = [ridBrand(explicitResourceId)];
     } else {
-      const all = await semiont.browse.resources({ limit: 1000 });
+      const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
       targets = all
         .filter((r) => {
           const mt = getMediaType(r);

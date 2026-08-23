@@ -5,7 +5,7 @@
  * Usage: tsx skills/track-recurring-services/script.ts [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KnowledgeBase } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KbTarget } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 const MIN_OCCURRENCES = Number(process.env.MIN_OCCURRENCES ?? 3);
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-track-recurring-services',
     label: 'household track-recurring-services',
     email,
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 5000 });
+    const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const events = all.filter((r) => {
       const types: string[] = (r as any).entityTypes ?? [];
       return types.includes('Event');

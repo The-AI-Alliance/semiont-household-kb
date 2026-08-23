@@ -10,7 +10,7 @@ import {
   InMemorySessionStorage,
   resourceId as ridBrand,
   type GatheredContext,
-  type KnowledgeBase,
+  type KbTarget,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-assess-house-maintenance',
     label: 'household assess-house-maintenance',
     email,
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 5000 });
+    const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const subsystems = all.filter((r) => {
       const types: string[] = (r as any).entityTypes ?? [];
       return types.includes('Subsystem');
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     const eventsBySubsystem = new Map<string, typeof events>();
     for (const ev of events) {
       const evId = ridBrand(ev['@id']);
-      const evAnnos = await semiont.browse.annotations(evId);
+      const evAnnos = await semiont.browse.annotations(evId).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
         const targets = bodies.filter(
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
       return;
     }
     const seedSubsystemId = ridBrand(seedSubsystem['@id']);
-    const seedAnnos = await semiont.browse.annotations(seedSubsystemId);
+    const seedAnnos = await semiont.browse.annotations(seedSubsystemId).fresh();
     const seedAnno = seedAnnos[0];
 
     if (!seedAnno) {

@@ -12,7 +12,7 @@ import {
   resourceId as ridBrand,
   type AnnotationId,
   type GatheredContext,
-  type KnowledgeBase,
+  type KbTarget,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, isInteractive, close as closeInteractive } from '../../src/interactive.js';
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   const email = process.env.SEMIONT_USER_EMAIL!;
   const password = process.env.SEMIONT_USER_PASSWORD!;
   const u = new URL(baseUrl);
-  const kb: KnowledgeBase = {
+  const kb: KbTarget = {
     id: 'household-canonicalize-subsystems',
     label: 'household canonicalize-subsystems',
     email,
@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   const semiont = session.client;
 
   try {
-    const all = await semiont.browse.resources({ limit: 1000 });
+    const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
     const markdown = all.filter((r) => {
       const mt = getMediaType(r);
       return mt === 'text/markdown' || mt === 'text/plain';
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
     const subAnnos: SubAnno[] = [];
     for (const r of markdown) {
       const rId = ridBrand(r['@id']);
-      const annotations = await semiont.browse.annotations(rId);
+      const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
         const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
