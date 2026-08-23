@@ -154,15 +154,14 @@ async function main(): Promise<void> {
       `## Subsystems considered (showing first 30 of ${subsystems.length})\n\n${manifest}\n\n` +
       `## Service schedules\n\n${scheduleManifest || '(none)'}\n\n---\n\n`;
 
-    const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
+    const yieldEvent = await semiont.yield.fromContext(context, {
       title: `Maintenance Assessment`,
       storageUri: `file://generated/maintenance-assessment.md`,
-      context,
       entityTypes: ['MaintenanceAssessment', 'Aggregate'],
       prompt: `${ASSESSMENT_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
     });
     if (yieldEvent.kind !== 'complete') {
-      console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
+      console.error(`yield.fromContext did not complete: ${yieldEvent.kind}`);
       closeInteractive();
       return;
     }

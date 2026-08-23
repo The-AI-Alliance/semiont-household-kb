@@ -12,12 +12,12 @@ You are turning every Room mention in the corpus into a canonical Room resource.
 
 1. Walks every `Room`-tagged annotation in the corpus.
 2. Clusters by surface text.
-3. For each cluster: gathers context, matches against existing Room resources; if no confident match, synthesizes a new Room resource via `yield.fromAnnotation`.
+3. For each cluster: gathers context, matches against existing Room resources; if no confident match, synthesizes a new Room resource via `yield.fromContext`.
 4. Binds every annotation in the cluster via `bind.body`.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.fromAnnotation`, `bind.body`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.fromContext`, `bind.body`.
 
 ## Tier-2 parameters
 

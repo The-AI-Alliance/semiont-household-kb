@@ -12,12 +12,12 @@ You are turning every Subsystem / Appliance mention in the corpus into a canonic
 
 1. Walks every annotation tagged `Subsystem`, `Appliance`, `HVAC`, `Plumbing`, `Electrical`, `RoofingSystem`, etc.
 2. Clusters by surface text (normalized — definite-articles stripped, ALL CAPS lowercased).
-3. For each cluster: gathers context, matches against existing Subsystem resources; if no confident match, synthesizes a new Subsystem resource via `yield.fromAnnotation` with body content + an External References section.
+3. For each cluster: gathers context, matches against existing Subsystem resources; if no confident match, synthesizes a new Subsystem resource via `yield.fromContext` with body content + an External References section.
 4. Binds every annotation in the cluster.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.fromAnnotation`, `bind.body`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.fromContext`, `bind.body`.
 
 ## Tier-2 parameters
 

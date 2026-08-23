@@ -170,15 +170,14 @@ async function main(): Promise<void> {
       `## Overdue service schedules\n\n${overdueSchedules || '(none surfaced — schedule cadence is on track or insufficient data)'}\n\n` +
       `---\n\n`;
 
-    const yieldEvent = await semiont.yield.fromAnnotation(seedSubsystemId, seedAnno.id, {
+    const yieldEvent = await semiont.yield.fromContext(context, {
       title: `System Priorities`,
       storageUri: `file://generated/system-priorities-${new Date().toISOString().slice(0, 10)}.md`,
-      context,
       entityTypes: ['SystemPriorities', 'Aggregate'],
       prompt: `${PRIORITIES_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
     });
     if (yieldEvent.kind !== 'complete') {
-      console.error(`yield.fromAnnotation did not complete: ${yieldEvent.kind}`);
+      console.error(`yield.fromContext did not complete: ${yieldEvent.kind}`);
       closeInteractive();
       return;
     }

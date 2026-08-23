@@ -48,7 +48,7 @@ function classifyCadence(medianDays: number): string {
   return 'biennial-or-rarer';
 }
 
-/** Heuristic event-body parser — pulls structured fields from yield.fromAnnotation prose. */
+/** Heuristic event-body parser — pulls structured fields from yield.fromContext prose. */
 function parseEventBody(body: string): { date: Date | null; subsystem: string | null; vendor: string | null; kind: string | null } {
   const out = { date: null as Date | null, subsystem: null as string | null, vendor: null as string | null, kind: null as string | null };
   const dateMatch = body.match(/(?:Date|date)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|[A-Z][a-z]+ \d{1,2},? \d{4})/);

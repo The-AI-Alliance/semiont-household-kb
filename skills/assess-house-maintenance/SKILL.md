@@ -18,11 +18,11 @@ This skill implements **Q1 from `PERSONAL-KB-EXPLORATION.md`**.
 4. Counts emergencies / repairs / inspections; computes reactive/proactive ratio.
 5. Walks commenting annotations for outstanding concerns.
 6. `gather.annotation` over the most material event annotations for context.
-7. `yield.fromAnnotation` synthesizes a `MaintenanceAssessment` aggregate citing every supporting Event.
+7. `yield.fromContext` synthesizes a `MaintenanceAssessment` aggregate citing every supporting Event.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromAnnotation`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`.
 
 ## Tier-2 parameters
 

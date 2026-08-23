@@ -142,10 +142,9 @@ async function main(): Promise<void> {
           : true;
         if (!proceedYield) continue;
 
-        const yieldEvent = await semiont.yield.fromAnnotation(sample.rId, sample.annId, {
+        const yieldEvent = await semiont.yield.fromContext(context, {
           title: key,
           storageUri: `file://generated/room-${slugify(key)}.md`,
-          context,
           entityTypes: ['Room'],
         });
         if (yieldEvent.kind !== 'complete') continue;
