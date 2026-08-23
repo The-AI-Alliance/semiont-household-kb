@@ -127,10 +127,9 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const yieldEvent = await semiont.yield.fromAnnotation(d.rId, d.annId, {
+      const yieldEvent = await semiont.yield.fromContext(context, {
         title: `Event: ${d.text}`,
         storageUri: `file://generated/event-${slugify(d.text)}-${d.annId.slice(-6)}.md`,
-        context,
         entityTypes: ['Event', 'Aggregate'],
         prompt: EVENT_INSTRUCTIONS,
       });

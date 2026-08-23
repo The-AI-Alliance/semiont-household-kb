@@ -135,10 +135,9 @@ async function main(): Promise<void> {
         `# Vendor Track Record: ${vendorName}\n\n` +
         `## Bound events (${vendorEvents.length})\n\n${eventList || '(none — vendor canonical exists but no Events have been bound to it yet)'}\n\n---\n\n`;
 
-      const yieldEvent = await semiont.yield.fromAnnotation(seedRId, seedAnno.id, {
+      const yieldEvent = await semiont.yield.fromContext(context, {
         title: `Vendor Track Record: ${vendorName}`,
         storageUri: `file://generated/vendor-track-${slugify(vendorName)}.md`,
-        context,
         entityTypes: ['VendorTrackRecord', 'Aggregate'],
         prompt: `${TRACK_RECORD_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
       });

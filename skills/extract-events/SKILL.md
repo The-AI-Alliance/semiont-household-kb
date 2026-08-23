@@ -13,12 +13,12 @@ You are turning every dated household event into a queryable Event resource — 
 For each markdown resource:
 1. Browses `Date`-tagged annotations.
 2. For each Date annotation, calls `gather.annotation` to pull surrounding context (the service that took place on that date — what subsystem, which vendor, what cost).
-3. `yield.fromAnnotation` synthesizes an Event resource with structured fields (date, kind — service / repair / inspection / payment / visit / utility-bill — subsystem, vendor, cost, notes).
+3. `yield.fromContext` synthesizes an Event resource with structured fields (date, kind — service / repair / inspection / payment / visit / utility-bill — subsystem, vendor, cost, notes).
 4. Binds the source annotation to the new Event resource.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromAnnotation`, `bind.body`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`, `bind.body`.
 
 ## Tier-2 parameters
 

@@ -16,11 +16,11 @@ For each canonical Vendor:
 3. Computes last-used date and visit count.
 4. Walks commenting annotations on the source documents that referenced this Vendor.
 5. `gather.annotation` over the most material event annotations.
-6. `yield.fromAnnotation` synthesizes a `VendorTrackRecord` aggregate.
+6. `yield.fromContext` synthesizes a `VendorTrackRecord` aggregate.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromAnnotation`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`.
 
 ## CLI args
 

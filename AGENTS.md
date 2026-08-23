@@ -24,10 +24,10 @@ This KB operationalizes the home-management worked examples in [`semiont-templat
 |---|---|---|
 | [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
 | [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.assist` (linking) |
-| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.fromAnnotation`, `+ bind.body` |
+| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.fromContext`, `+ bind.body` |
 | [`canonicalize-subsystems`](skills/canonicalize-subsystems/) | Promote Subsystem / Appliance mentions to canonical Subsystem resources with manufacturer / installed-date / warranty / lifespan | same shape |
 | [`canonicalize-vendors`](skills/canonicalize-vendors/) | Promote Vendor / service-company mentions to canonical Vendor resources | same shape |
-| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.fromAnnotation`, `+ bind.body` |
+| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.fromContext`, `+ bind.body` |
 | [`track-recurring-services`](skills/track-recurring-services/) | Detect recurring service schedules; project next-due dates | `+ yield.resource` (one ServiceSchedule per cadence) |
 | [`comment-action-items`](skills/comment-action-items/) | Surface follow-up items, missing documentation, warranty events | `mark.assist` (commenting) |
 | [`assess-house-maintenance`](skills/assess-house-maintenance/) | Per-Subsystem backward-looking maintenance score (worked example Q1) | `+ gather.annotation`, full pipeline |

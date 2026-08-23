@@ -20,11 +20,11 @@ For each canonical Subsystem:
 5. Pulls warranty status from the canonical body.
 6. Scores priority (0–100) based on age-ratio + recent-issue density + cadence drift.
 7. `gather.annotation` over the most material event annotations.
-8. `yield.fromAnnotation` synthesizes a `SystemPriorities` aggregate with a ranked priority list, cost estimates where present, cascade-risk reasoning, seasonality notes.
+8. `yield.fromContext` synthesizes a `SystemPriorities` aggregate with a ranked priority list, cost estimates where present, cascade-risk reasoning, seasonality notes.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromAnnotation`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`.
 
 ## Tier-2 parameters
 

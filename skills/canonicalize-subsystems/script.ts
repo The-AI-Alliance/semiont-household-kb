@@ -197,15 +197,14 @@ async function main(): Promise<void> {
         const leadTag = sample.tags.find((t) => t !== 'Subsystem') ?? 'Subsystem';
         const entityTypes = leadTag === 'Subsystem' ? ['Subsystem'] : ['Subsystem', leadTag];
 
-        const yieldEvent = await semiont.yield.fromAnnotation(sample.rId, sample.annId, {
+        const yieldEvent = await semiont.yield.fromContext(context, {
           title: key,
           storageUri: `file://generated/subsystem-${slugify(key)}.md`,
-          context,
           entityTypes,
           prompt: externalRefs
             ? `Include this references section at the end of the body verbatim:\n\n${externalRefs}`
             : undefined,
-        });
+          });
         if (yieldEvent.kind !== 'complete') continue;
         const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
         if (!newResourceId) continue;
