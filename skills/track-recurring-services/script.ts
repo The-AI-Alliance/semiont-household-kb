@@ -5,7 +5,7 @@
  * Usage: tsx skills/track-recurring-services/script.ts [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KbTarget } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KbTarget, type ResourceDescriptor } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 const MIN_OCCURRENCES = Number(process.env.MIN_OCCURRENCES ?? 3);
@@ -17,7 +17,7 @@ interface EventRecord {
   subsystem: string | null;
   vendor: string | null;
   kind: string | null;
-  raw: any;
+  raw: ResourceDescriptor;
 }
 
 function median(nums: number[]): number {

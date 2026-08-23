@@ -14,6 +14,7 @@ import {
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
+import { getMediaType } from '../../src/media-type.js';
 
 const MIN_DATE_CONTEXT = Number(process.env.MIN_DATE_CONTEXT ?? 40);
 const EVENT_INSTRUCTIONS =
@@ -30,14 +31,6 @@ Only synthesize an Event if the surrounding context actually describes a discret
 date is just a header timestamp with no event content, return an empty body and the harness will
 skip it.`;
 
-function getMediaType(r: any): string | undefined {
-  const reps = Array.isArray(r.representations)
-    ? r.representations
-    : r.representations
-      ? [r.representations]
-      : [];
-  return reps[0]?.mediaType;
-}
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 60);
@@ -79,8 +72,11 @@ async function main(): Promise<void> {
         if (ann.motivation !== 'linking') continue;
         const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
         const tags = bodies
-          .filter((b: any) => b.type === 'TextualBody' && b.purpose === 'tagging')
-          .flatMap((b: any) => (Array.isArray(b.value) ? b.value : [b.value]));
+          .flatMap((b) =>
+            b.type === 'TextualBody' && b.purpose === 'tagging'
+              ? (Array.isArray(b.value) ? b.value : [b.value])
+              : [],
+          );
         if (!tags.includes('Date')) continue;
 
         const target = ann.target;

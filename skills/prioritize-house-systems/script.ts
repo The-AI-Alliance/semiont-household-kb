@@ -14,6 +14,7 @@ import {
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { lookupLifespan } from '../../src/lifespan-data.js';
+import { getMediaType } from '../../src/media-type.js';
 
 const LOOKBACK_MONTHS = Number(process.env.LOOKBACK_MONTHS ?? 24);
 const PRIORITIES_INSTRUCTIONS =
@@ -36,14 +37,6 @@ Then add:
 
 Mark synthesis explicitly as LLM judgment, not a substitute for a contractor's site-walk.`;
 
-function getMediaType(r: any): string | undefined {
-  const reps = Array.isArray(r.representations)
-    ? r.representations
-    : r.representations
-      ? [r.representations]
-      : [];
-  return reps[0]?.mediaType;
-}
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 60);
