@@ -14,6 +14,7 @@ import {
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
+import { getMediaType } from '../../src/media-type.js';
 
 const MAX_GATHER = Number(process.env.MAX_GATHER ?? 15);
 const ASSESSMENT_INSTRUCTIONS =
@@ -28,14 +29,6 @@ const ASSESSMENT_INSTRUCTIONS =
 - Documentation gaps: Subsystems with zero Events; periods of the corpus with no records.
 Cite every numeric claim by linking to its supporting Event resource (use the resourceId).`;
 
-function getMediaType(r: any): string | undefined {
-  const reps = Array.isArray(r.representations)
-    ? r.representations
-    : r.representations
-      ? [r.representations]
-      : [];
-  return reps[0]?.mediaType;
-}
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 60);
