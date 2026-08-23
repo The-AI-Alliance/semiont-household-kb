@@ -58,15 +58,15 @@ async function main(): Promise<void> {
   try {
     const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const subsystems = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Subsystem');
     });
     const events = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Event');
     });
     const schedules = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('ServiceSchedule');
     });
 
@@ -92,13 +92,15 @@ async function main(): Promise<void> {
       const evAnnos = await semiont.browse.annotations(evId).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
-        const targets = bodies.filter(
-          (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
-        );
-        for (const t of targets) {
-          const targetId = (t as any).source as string;
+        // AnnotationBody is discriminated on `type`, so a control-flow guard
+        // narrows it to SpecificResource and `.source` is typed. The previous
+        // `(b: any)` filter callback erased that, which is why `.source` then
+        // needed a cast to be reachable at all.
+        for (const b of bodies) {
+          if (b.type !== 'SpecificResource' || b.purpose !== 'linking') continue;
+          const targetId = b.source;
           const target = all.find((x) => x['@id'] === targetId);
-          const types: string[] = (target as any)?.entityTypes ?? [];
+          const types: string[] = target?.entityTypes ?? [];
           if (!types.includes('Subsystem')) continue;
           if (!eventsBySubsystem.has(targetId)) eventsBySubsystem.set(targetId, []);
           eventsBySubsystem.get(targetId)!.push(ev);
@@ -141,12 +143,12 @@ async function main(): Promise<void> {
       .slice(0, 30)
       .map((s) => {
         const n = eventsBySubsystem.get(s['@id'])?.length ?? 0;
-        return `- ${(s as any).name} (\`${s['@id']}\`) — ${n} events`;
+        return `- ${s.name} (\`${s['@id']}\`) — ${n} events`;
       })
       .join('\n');
 
     const scheduleManifest = schedules
-      .map((sc) => `- ${(sc as any).name} (\`${sc['@id']}\`)`)
+      .map((sc) => `- ${sc.name} (\`${sc['@id']}\`)`)
       .join('\n');
 
     const prepend =

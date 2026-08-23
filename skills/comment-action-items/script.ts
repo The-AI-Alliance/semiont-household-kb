@@ -7,6 +7,7 @@
 import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KbTarget, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { createdCount } from '../../src/mark-result.js';
+import { getMediaType } from '../../src/media-type.js';
 
 const COMMENT_INSTRUCTIONS =
   process.env.COMMENT_INSTRUCTIONS ??
@@ -16,14 +17,6 @@ ambiguous contractor-estimate scope, unresolved utility billing disputes, expiri
 HOA violations or notices that need response, neighbor-affecting maintenance items.
 For each, tag the span and write a brief comment (1–2 sentences) explaining what needs to happen.`;
 
-function getMediaType(r: any): string | undefined {
-  const reps = Array.isArray(r.representations)
-    ? r.representations
-    : r.representations
-      ? [r.representations]
-      : [];
-  return reps[0]?.mediaType;
-}
 
 async function main(): Promise<void> {
   const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';

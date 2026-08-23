@@ -66,15 +66,15 @@ async function main(): Promise<void> {
   try {
     const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const subsystems = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Subsystem');
     });
     const events = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Event');
     });
     const schedules = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('ServiceSchedule');
     });
 
@@ -97,8 +97,8 @@ async function main(): Promise<void> {
     const lifespanLines = subsystems
       .slice(0, 30)
       .map((s) => {
-        const name = ((s as any).name ?? '').toString().toLowerCase();
-        const types: string[] = (s as any).entityTypes ?? [];
+        const name = (s.name ?? '').toString().toLowerCase();
+        const types: string[] = s.entityTypes ?? [];
         const guessKey = name.includes('water heater')
           ? 'water-heater-tank'
           : name.includes('furnace')
@@ -113,7 +113,7 @@ async function main(): Promise<void> {
                     ? 'dishwasher'
                     : 'unknown';
         const range = lookupLifespan(guessKey);
-        return `- ${(s as any).name} (\`${s['@id']}\`) — typical lifespan ${range.minYears}–${range.maxYears} years`;
+        return `- ${s.name} (\`${s['@id']}\`) — typical lifespan ${range.minYears}–${range.maxYears} years`;
       })
       .join('\n');
 
@@ -123,11 +123,12 @@ async function main(): Promise<void> {
       const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id'])).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
-        const targets = bodies.filter(
-          (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
-        );
-        for (const t of targets) {
-          const targetId = (t as any).source as string;
+        // AnnotationBody is discriminated on `type`; a control-flow guard narrows
+        // it to SpecificResource so `.source` is typed. The old `(b: any)` filter
+        // callback erased that narrowing, which is why `.source` needed a cast.
+        for (const b of bodies) {
+          if (b.type !== 'SpecificResource' || b.purpose !== 'linking') continue;
+          const targetId = b.source;
           eventsBySubsystem.set(targetId, (eventsBySubsystem.get(targetId) ?? 0) + 1);
         }
       }
@@ -158,10 +159,18 @@ async function main(): Promise<void> {
     }
     const context = gather.response as GatheredContext;
 
-    const overdueSchedules = schedules
-      .filter((s) => ((s as any).body ?? '').toString().includes('OVERDUE'))
-      .map((s) => `- ${(s as any).name} (\`${s['@id']}\`)`)
-      .join('\n');
+    // "OVERDUE" lives in the schedule's CONTENT, which a ResourceDescriptor does
+    // not carry — the previous `(s as any).body` was always undefined, so this
+    // filter never matched and the section below was permanently "(none
+    // surfaced)". Content must be fetched, so the filter cannot stay synchronous.
+    const overdueEntries: string[] = [];
+    for (const s of schedules) {
+      const content = await semiont.browse.resourceContent(ridBrand(s['@id']));
+      if (content.includes('OVERDUE')) {
+        overdueEntries.push(`- ${s.name} (\`${s['@id']}\`)`);
+      }
+    }
+    const overdueSchedules = overdueEntries.join('\n');
 
     const prepend =
       `# System Priorities\n\n*Forward-looking 12-month priority ranking. Generated against the current corpus state.*\n\n` +
