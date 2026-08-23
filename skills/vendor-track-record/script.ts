@@ -55,11 +55,11 @@ async function main(): Promise<void> {
     const vendors = vendorArg
       ? all.filter((r) => r['@id'] === vendorArg)
       : all.filter((r) => {
-          const types: string[] = (r as any).entityTypes ?? [];
+          const types: string[] = r.entityTypes ?? [];
           return types.includes('Vendor');
         });
     const events = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Event');
     });
 
@@ -82,13 +82,14 @@ async function main(): Promise<void> {
       const evAnnos = await semiont.browse.annotations(ridBrand(ev['@id'])).fresh();
       for (const a of evAnnos) {
         const bodies = Array.isArray(a.body) ? a.body : a.body ? [a.body] : [];
-        const targets = bodies.filter(
-          (b: any) => b.type === 'SpecificResource' && b.purpose === 'linking',
-        );
-        for (const t of targets) {
-          const targetId = (t as any).source as string;
+        // AnnotationBody is discriminated on `type`; a control-flow guard narrows
+        // it to SpecificResource so `.source` is typed. The old `(b: any)` filter
+        // callback erased that narrowing, which is why `.source` needed a cast.
+        for (const b of bodies) {
+          if (b.type !== 'SpecificResource' || b.purpose !== 'linking') continue;
+          const targetId = b.source;
           const target = all.find((x) => x['@id'] === targetId);
-          const types: string[] = (target as any)?.entityTypes ?? [];
+          const types: string[] = target?.entityTypes ?? [];
           if (!types.includes('Vendor')) continue;
           if (!eventsByVendor.has(targetId)) eventsByVendor.set(targetId, []);
           eventsByVendor.get(targetId)!.push(ev);
@@ -99,7 +100,7 @@ async function main(): Promise<void> {
     let synthesized = 0;
     for (const vendor of vendors) {
       const vendorId = ridBrand(vendor['@id']);
-      const vendorName = (vendor as any).name ?? 'Unknown Vendor';
+      const vendorName = vendor.name ?? 'Unknown Vendor';
       const vendorEvents = eventsByVendor.get(vendor['@id']) ?? [];
 
       if (vendorEvents.length === 0) {
@@ -128,7 +129,7 @@ async function main(): Promise<void> {
       const context = gather.response as GatheredContext;
 
       const eventList = vendorEvents
-        .map((e) => `- ${(e as any).name} (\`${e['@id']}\`)`)
+        .map((e) => `- ${e.name} (\`${e['@id']}\`)`)
         .join('\n');
 
       const prepend =

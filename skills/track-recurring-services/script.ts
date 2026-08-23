@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   try {
     const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
     const events = all.filter((r) => {
-      const types: string[] = (r as any).entityTypes ?? [];
+      const types: string[] = r.entityTypes ?? [];
       return types.includes('Event');
     });
 
@@ -97,7 +97,11 @@ async function main(): Promise<void> {
     // Parse each Event
     const records: EventRecord[] = [];
     for (const e of events) {
-      const body = ((e as any).body ?? (e as any).text ?? '').toString();
+      // A ResourceDescriptor carries metadata, not content — it has no `body`
+      // or `text` field. The previous cast read undefined, so parseEventBody
+      // always saw '', found no date, and EVERY event hit the `continue` below:
+      // this skill produced no records at all. Content comes from the API.
+      const body = await semiont.browse.resourceContent(ridBrand(e['@id']));
       const fields = parseEventBody(body);
       if (!fields.date) continue;
       records.push({

@@ -121,8 +121,15 @@ async function main(): Promise<void> {
       const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
       if (!('response' in gather)) continue;
       const context = gather.response as GatheredContext;
-      const ctxText = (context as any).text ?? (context as any).content ?? '';
-      if (typeof ctxText === 'string' && ctxText.length < MIN_DATE_CONTEXT) {
+      // Text lives on the focus, not the context root. The previous
+      // `(context as any).text` read a nonexistent field, so ctxText was always
+      // '' — and since '' is shorter than MIN_DATE_CONTEXT, EVERY annotation hit
+      // the skip below and this skill created no Events at all.
+      const selected = context.focus.kind === 'annotation' ? context.focus.selected : undefined;
+      const ctxText = selected
+        ? `${selected.before ?? ''}${selected.text}${selected.after ?? ''}`
+        : '';
+      if (ctxText.length < MIN_DATE_CONTEXT) {
         skipped++;
         continue;
       }
