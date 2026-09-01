@@ -55,6 +55,6 @@ Per-file resource id and entity types.
 
 ## Guidance for the AI assistant
 
-- Re-running creates duplicates. Restart the backend stack to start fresh, or use `browse.resources({ search: '<title>' })` to check before re-running.
+- Re-running creates duplicates. Restart the stack to start fresh, or use `browse.resources({ search: '<title>' })` to check before re-running.
 - Subdirectory layout (`hvac/`, `plumbing/`, etc.) is convenient organization, not load-bearing — file classification comes from filename heuristics, so reorganizing the corpus by topic doesn't change what the skills see.
 - Pre-curated context articles in `context/` / `curated/` / `generated/` survive subsequent runs.

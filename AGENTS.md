@@ -18,7 +18,7 @@ This KB operationalizes the home-management worked examples in [`semiont-templat
   - `src/external-authorities.ts` — adapters for manufacturer manual lookups, ASHRAE / NFPA / NRCA standard references, USDA hardiness zones
   - `src/lifespan-data.ts` — typical lifespan ranges by subsystem (used by `prioritize-house-systems` when no manufacturer reference is available)
   - `src/interactive.ts` — `confirm` / `pick` / `preview` helpers for tier-3 interactive checkpoints
-- **`skills/`** — ten skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running backend.
+- **`skills/`** — ten skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running stack.
 
 | Skill | What it does | New SDK verbs |
 |---|---|---|
@@ -83,13 +83,13 @@ A real-world deployment of this KB carries the family's address, financial detai
 
 - Use **local-first** inference (Ollama) — the privacy gain compounds with the cost gain.
 - Be careful about external-authority lookups — sending a vendor's name to a generic Google search is fine; sending the homeowner's address to a third-party API is not.
-- Treat the backend stack as on-premise from the start. Codespaces is for evaluating the synthetic dataset, not for running real homeowner records.
+- Treat the stack as on-premise from the start. Codespaces is for evaluating the synthetic dataset, not for running real homeowner records.
 
 ## Working in containers — do not install npm packages on the host
 
-This template assumes a containerized workflow. The backend stack runs in containers (`semiont start` brings it up); the skills run in containers too.
+This template assumes a containerized workflow. The stack runs in containers (`semiont start` brings it up); the skills run in containers too.
 
-## Backend setup
+## Stack setup
 
 ### Local: `semiont start`
 
@@ -110,7 +110,7 @@ semiont useradd --email admin@example.com --admin
 gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
 gh codespace ports forward 4000:4000
 gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
-  exec -T backend semiont-useradd --email you@example.com --generate-password --admin'
+  exec -T gateway semiont-useradd --email you@example.com --generate-password --admin'
 ```
 
 ## Background reading
