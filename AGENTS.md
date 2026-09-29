@@ -106,12 +106,13 @@ semiont useradd --email admin@example.com --admin
 
 ### Codespaces (synthetic data only)
 
+From your machine, `semiont start --runtime codespace --repo The-AI-Alliance/semiont-household-kb` creates or resumes the codespace, waits for the stack (which the codespace's own launcher runs), and forwards the KB (4000) and its Keycloak (8080), or the next free ports it prints. No account is created — make the first one; it prompts for the password:
+
 ```bash
-gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
-gh codespace ports forward 4000:4000
-gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
-  exec -T gateway semiont-useradd --email you@example.com --generate-password --admin'
+semiont useradd --repo The-AI-Alliance/semiont-household-kb --email you@example.com
 ```
+
+`semiont stop --repo The-AI-Alliance/semiont-household-kb` stops the codespace; add `--delete` to destroy it.
 
 ## Background reading
 
