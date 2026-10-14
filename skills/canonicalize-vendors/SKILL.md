@@ -12,12 +12,12 @@ You are turning every Vendor / service-company mention in the corpus into a cano
 
 1. Walks `Vendor`, `ServiceProvider`-tagged annotations.
 2. Clusters by surface text.
-3. For each cluster: gathers context, matches against existing Vendor resources; if no confident match, synthesizes a new Vendor resource via `yield.fromContext`.
+3. For each cluster: gathers context, matches against existing Vendor resources; if no confident match, synthesizes a new Vendor resource via `yield.delegate`.
 4. Binds every annotation in the cluster.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.fromContext`, `bind.body`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `match.search`, `yield.delegate`, `bind.body`.
 
 ## Tier-2 parameters
 
@@ -32,11 +32,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/canonicalize-vendors/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/canonicalize-vendors/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Guidance for the AI assistant
 

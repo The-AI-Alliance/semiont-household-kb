@@ -8,10 +8,9 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
+  httpKb,
   resourceId as ridBrand,
   type GatheredContext,
-  type KbTarget,
-  type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { getMediaType } from '../../src/media-type.js';
@@ -35,17 +34,21 @@ function slugify(text: string): string {
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'household-assess-house-maintenance',
-    label: 'household assess-house-maintenance',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'household-assess-house-maintenance',
+      label: 'household assess-house-maintenance',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -149,18 +152,19 @@ async function main(): Promise<void> {
       `## Subsystems considered (showing first 30 of ${subsystems.length})\n\n${manifest}\n\n` +
       `## Service schedules\n\n${scheduleManifest || '(none)'}\n\n---\n\n`;
 
-    const yieldEvent = await semiont.yield.fromContext(context, {
+    const yieldEvent = await semiont.yield.delegate({
+      context,
       title: `Maintenance Assessment`,
       storageUri: `file://generated/maintenance-assessment.md`,
       entityTypes: ['MaintenanceAssessment', 'Aggregate'],
       prompt: `${ASSESSMENT_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
     });
-    if (yieldEvent.kind !== 'complete') {
-      console.error(`yield.fromContext did not complete: ${yieldEvent.kind}`);
+    if (!yieldEvent.result || !('resourceId' in yieldEvent.result)) {
+      console.error(`the generation made no resource`);
       closeInteractive();
       return;
     }
-    const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+    const resourceId = yieldEvent.result && 'resourceId' in yieldEvent.result ? yieldEvent.result.resourceId : undefined;
     console.log(`\n✓ MaintenanceAssessment synthesized: ${resourceId}`);
 
     closeInteractive();
