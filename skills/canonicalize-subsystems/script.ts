@@ -9,10 +9,9 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
-  resourceId as ridBrand,
+  httpKb,
+  getAnnotationExactText,
   type AnnotationId,
-  type GatheredContext,
-  type KbTarget,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, isInteractive, close as closeInteractive } from '../../src/interactive.js';
@@ -72,17 +71,21 @@ function pickStandardRefs(tags: string[], surfaceText: string): ExternalReferenc
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'household-canonicalize-subsystems',
-    label: 'household canonicalize-subsystems',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'household-canonicalize-subsystems',
+      label: 'household canonicalize-subsystems',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -94,7 +97,7 @@ async function main(): Promise<void> {
 
     const subAnnos: SubAnno[] = [];
     for (const r of markdown) {
-      const rId = ridBrand(r['@id']);
+      const rId = r['@id'];
       const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
@@ -109,17 +112,7 @@ async function main(): Promise<void> {
         const alreadyBound = bodies.some(
           (b) => b.type === 'SpecificResource' && b.purpose === 'linking',
         );
-        const target = ann.target;
-        const selectors =
-          typeof target === 'string' || !target.selector
-            ? []
-            : Array.isArray(target.selector)
-              ? target.selector
-              : [target.selector];
-        let text = '';
-        for (const s of selectors) {
-          if (s.type === 'TextQuoteSelector') { text = s.exact; break; }
-        }
+        const text = getAnnotationExactText(ann);
         subAnnos.push({
           rId,
           annId: ann.id,
@@ -163,16 +156,14 @@ async function main(): Promise<void> {
     for (const [key, anns] of clusters) {
       const sample = anns[0];
       if (!sample) continue;
-      const gather = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
-      if (!('response' in gather)) continue;
-      const context = gather.response as GatheredContext;
+      const { response: context } = await semiont.gather.annotation(sample.rId, sample.annId, { contextWindow: 1500 });
       const matchResult = await semiont.match.search(sample.rId, sample.annId, context, {
         limit: 5,
         useSemanticScoring: true,
       });
       const top = matchResult.response[0];
 
-      let targetResourceId: string;
+      let targetResourceId: ResourceId;
       if (top && (top.score ?? 0) >= MATCH_THRESHOLD && top.entityTypes?.includes('Subsystem')) {
         targetResourceId = top['@id'];
         console.log(`  ↪ "${sample.text}" → ${top.name} (existing, score ${top.score})`);
@@ -193,7 +184,8 @@ async function main(): Promise<void> {
         const leadTag = sample.tags.find((t) => t !== 'Subsystem') ?? 'Subsystem';
         const entityTypes = leadTag === 'Subsystem' ? ['Subsystem'] : ['Subsystem', leadTag];
 
-        const yieldEvent = await semiont.yield.fromContext(context, {
+        const yieldEvent = await semiont.yield.delegate({
+          context,
           title: key,
           storageUri: `file://generated/subsystem-${slugify(key)}.md`,
           entityTypes,
@@ -201,8 +193,8 @@ async function main(): Promise<void> {
             ? `Include this references section at the end of the body verbatim:\n\n${externalRefs}`
             : undefined,
           });
-        if (yieldEvent.kind !== 'complete') continue;
-        const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+        if (!yieldEvent.result || !('resourceId' in yieldEvent.result)) continue;
+        const newResourceId = yieldEvent.result && 'resourceId' in yieldEvent.result ? yieldEvent.result.resourceId : undefined;
         if (!newResourceId) continue;
         targetResourceId = newResourceId;
         synthesized++;

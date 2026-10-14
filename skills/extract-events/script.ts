@@ -7,10 +7,9 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
-  resourceId as ridBrand,
+  httpKb,
+  getEntityTypes,
   type AnnotationId,
-  type GatheredContext,
-  type KbTarget,
   type ResourceId,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
@@ -44,17 +43,21 @@ interface DateAnno {
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'household-extract-events',
-    label: 'household extract-events',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'household-extract-events',
+      label: 'household extract-events',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {
@@ -66,17 +69,11 @@ async function main(): Promise<void> {
 
     const dateAnnos: DateAnno[] = [];
     for (const r of markdown) {
-      const rId = ridBrand(r['@id']);
+      const rId = r['@id'];
       const annotations = await semiont.browse.annotations(rId).fresh();
       for (const ann of annotations) {
         if (ann.motivation !== 'linking') continue;
-        const bodies = Array.isArray(ann.body) ? ann.body : ann.body ? [ann.body] : [];
-        const tags = bodies
-          .flatMap((b) =>
-            b.type === 'TextualBody' && b.purpose === 'tagging'
-              ? (Array.isArray(b.value) ? b.value : [b.value])
-              : [],
-          );
+        const tags = getEntityTypes(ann);
         if (!tags.includes('Date')) continue;
 
         const target = ann.target;
@@ -114,9 +111,7 @@ async function main(): Promise<void> {
     let synthesized = 0;
     let skipped = 0;
     for (const d of dateAnnos) {
-      const gather = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
-      if (!('response' in gather)) continue;
-      const context = gather.response as GatheredContext;
+      const { response: context } = await semiont.gather.annotation(d.rId, d.annId, { contextWindow: 1200 });
       // Text lives on the focus, not the context root. The previous
       // `(context as any).text` read a nonexistent field, so ctxText was always
       // '' — and since '' is shorter than MIN_DATE_CONTEXT, EVERY annotation hit
@@ -130,14 +125,15 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const yieldEvent = await semiont.yield.fromContext(context, {
+      const yieldEvent = await semiont.yield.delegate({
+        context,
         title: `Event: ${d.text}`,
         storageUri: `file://generated/event-${slugify(d.text)}-${d.annId.slice(-6)}.md`,
         entityTypes: ['Event', 'Aggregate'],
         prompt: EVENT_INSTRUCTIONS,
       });
-      if (yieldEvent.kind !== 'complete') continue;
-      const newResourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
+      if (!yieldEvent.result || !('resourceId' in yieldEvent.result)) continue;
+      const newResourceId = yieldEvent.result && 'resourceId' in yieldEvent.result ? yieldEvent.result.resourceId : undefined;
       if (!newResourceId) continue;
 
       await semiont.bind.body(d.rId, d.annId, [

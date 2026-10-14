@@ -23,13 +23,13 @@ This KB operationalizes the home-management worked examples in [`semiont-templat
 | Skill | What it does | New SDK verbs |
 |---|---|---|
 | [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
-| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.assist` (linking) |
-| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.fromContext`, `+ bind.body` |
+| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.delegate` (linking) |
+| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.delegate`, `+ bind.body` |
 | [`canonicalize-subsystems`](skills/canonicalize-subsystems/) | Promote Subsystem / Appliance mentions to canonical Subsystem resources with manufacturer / installed-date / warranty / lifespan | same shape |
 | [`canonicalize-vendors`](skills/canonicalize-vendors/) | Promote Vendor / service-company mentions to canonical Vendor resources | same shape |
-| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.fromContext`, `+ bind.body` |
+| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.delegate`, `+ bind.body` |
 | [`track-recurring-services`](skills/track-recurring-services/) | Detect recurring service schedules; project next-due dates | `+ yield.resource` (one ServiceSchedule per cadence) |
-| [`comment-action-items`](skills/comment-action-items/) | Surface follow-up items, missing documentation, warranty events | `mark.assist` (commenting) |
+| [`comment-action-items`](skills/comment-action-items/) | Surface follow-up items, missing documentation, warranty events | `mark.delegate` (commenting) |
 | [`assess-house-maintenance`](skills/assess-house-maintenance/) | Per-Subsystem backward-looking maintenance score (worked example Q1) | `+ gather.annotation`, full pipeline |
 | [`prioritize-house-systems`](skills/prioritize-house-systems/) | Forward-looking System priorities (worked example Q2) | full pipeline composition |
 | [`vendor-track-record`](skills/vendor-track-record/) | Per-Vendor decisional summary | full pipeline composition |
@@ -120,7 +120,7 @@ semiont useradd --repo The-AI-Alliance/semiont-household-kb --email you@example.
 |---|---|
 | [PERSONAL-KB-EXPLORATION.md](https://github.com/The-AI-Alliance/semiont-template-kb/blob/main/PERSONAL-KB-EXPLORATION.md) | Full analysis of personal-KB use cases. The home-management worked examples (Q1, Q2) and vendor / system canonicalization patterns map directly to skills here. |
 | [`@semiont/sdk` README](https://github.com/The-AI-Alliance/semiont/tree/main/packages/sdk) | The TypeScript surface — eight verbs plus admin/auth/job. |
-| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/protocol/skills) | Reference skill packs. |
+| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/builder/skills) | Reference skill packs. |
 | [ASHRAE Standard 180](https://www.ashrae.org/) | HVAC inspection / maintenance schedules. |
 | [NFPA codes](https://www.nfpa.org/) | Electrical and fire-safety standards. |
 | [NRCA roofing standards](https://www.nrca.net/) | Roofing-system inspection cadences. |
