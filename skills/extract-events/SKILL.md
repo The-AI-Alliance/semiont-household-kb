@@ -13,12 +13,12 @@ You are turning every dated household event into a queryable Event resource — 
 For each markdown resource:
 1. Browses `Date`-tagged annotations.
 2. For each Date annotation, calls `gather.annotation` to pull surrounding context (the service that took place on that date — what subsystem, which vendor, what cost).
-3. `yield.fromContext` synthesizes an Event resource with structured fields (date, kind — service / repair / inspection / payment / visit / utility-bill — subsystem, vendor, cost, notes).
+3. `yield.delegate` synthesizes an Event resource with structured fields (date, kind — service / repair / inspection / payment / visit / utility-bill — subsystem, vendor, cost, notes).
 4. Binds the source annotation to the new Event resource.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`, `bind.body`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.delegate`, `bind.body`.
 
 ## Tier-2 parameters
 
@@ -34,11 +34,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/extract-events/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/extract-events/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Guidance for the AI assistant
 

@@ -5,7 +5,7 @@
  * Usage: tsx skills/track-recurring-services/script.ts [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, resourceId as ridBrand, type KbTarget, type ResourceDescriptor } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, httpKb, resourceId as ridBrand, type ResourceDescriptor } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 
 const MIN_OCCURRENCES = Number(process.env.MIN_OCCURRENCES ?? 3);
@@ -48,7 +48,7 @@ function classifyCadence(medianDays: number): string {
   return 'biennial-or-rarer';
 }
 
-/** Heuristic event-body parser — pulls structured fields from yield.fromContext prose. */
+/** Heuristic event-body parser — pulls structured fields from yield.delegate prose. */
 function parseEventBody(body: string): { date: Date | null; subsystem: string | null; vendor: string | null; kind: string | null } {
   const out = { date: null as Date | null, subsystem: null as string | null, vendor: null as string | null, kind: null as string | null };
   const dateMatch = body.match(/(?:Date|date)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|[A-Z][a-z]+ \d{1,2},? \d{4})/);
@@ -66,17 +66,21 @@ function parseEventBody(body: string): { date: Date | null; subsystem: string | 
 }
 
 async function main(): Promise<void> {
-  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
-  const email = process.env.SEMIONT_USER_EMAIL!;
-  const password = process.env.SEMIONT_USER_PASSWORD!;
-  const u = new URL(baseUrl);
-  const kb: KbTarget = {
-    id: 'household-track-recurring-services',
-    label: 'household track-recurring-services',
-    email,
-    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
-  };
-  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
+  const session = await SemiontSession.signInDevice({
+    kb: httpKb({
+      id: 'household-track-recurring-services',
+      label: 'household track-recurring-services',
+      host: gateway.hostname,
+      port: Number(gateway.port) || 4000,
+      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
+    }),
+    storage: new InMemorySessionStorage(),
+    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
+      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
+      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
+    },
+  });
   const semiont = session.client;
 
   try {

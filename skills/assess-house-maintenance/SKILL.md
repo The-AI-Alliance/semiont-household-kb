@@ -18,11 +18,11 @@ This skill implements **Q1 from `PERSONAL-KB-EXPLORATION.md`**.
 4. Counts emergencies / repairs / inspections; computes reactive/proactive ratio.
 5. Walks commenting annotations for outstanding concerns.
 6. `gather.annotation` over the most material event annotations for context.
-7. `yield.fromContext` synthesizes a `MaintenanceAssessment` aggregate citing every supporting Event.
+7. `yield.delegate` synthesizes a `MaintenanceAssessment` aggregate citing every supporting Event.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.delegate`.
 
 ## Tier-2 parameters
 
@@ -38,11 +38,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/assess-house-maintenance/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/assess-house-maintenance/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Output
 

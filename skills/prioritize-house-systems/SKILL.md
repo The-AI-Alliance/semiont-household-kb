@@ -20,11 +20,11 @@ For each canonical Subsystem:
 5. Pulls warranty status from the canonical body.
 6. Scores priority (0–100) based on age-ratio + recent-issue density + cadence drift.
 7. `gather.annotation` over the most material event annotations.
-8. `yield.fromContext` synthesizes a `SystemPriorities` aggregate with a ranked priority list, cost estimates where present, cascade-risk reasoning, seasonality notes.
+8. `yield.delegate` synthesizes a `SystemPriorities` aggregate with a ranked priority list, cost estimates where present, cascade-risk reasoning, seasonality notes.
 
 ## SDK verbs
 
-`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.fromContext`.
+`browse.resources`, `browse.annotations`, `gather.annotation`, `yield.delegate`.
 
 ## Tier-2 parameters
 
@@ -40,11 +40,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
-  -e SEMIONT_USER_EMAIL=admin@example.com \
-  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/prioritize-house-systems/script.ts'
+  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/prioritize-house-systems/script.ts'
 ```
+
+The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Output
 
