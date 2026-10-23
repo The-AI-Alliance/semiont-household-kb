@@ -19,7 +19,7 @@ For each, tag the span and write a brief comment (1–2 sentences) explaining wh
 
 async function main(): Promise<void> {
   const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const session = await SemiontSession.signInDevice({
+  const opened = await SemiontSession.signInDevice({
     kb: httpKb({
       id: 'household-comment-action-items',
       label: 'household comment-action-items',
@@ -33,7 +33,7 @@ async function main(): Promise<void> {
       if (!verificationUriComplete) console.error(`Code: ${userCode}`);
     },
   });
-  const semiont = session.client;
+  const semiont = opened.session.client;
 
   try {
     const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
     console.log(`\nDone. Created ${total} commenting annotations.`);
     closeInteractive();
   } finally {
-    await session.dispose();
+    opened.dispose();
   }
 }
 
