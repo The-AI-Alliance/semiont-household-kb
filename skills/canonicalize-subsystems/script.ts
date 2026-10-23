@@ -72,7 +72,7 @@ function pickStandardRefs(tags: string[], surfaceText: string): ExternalReferenc
 
 async function main(): Promise<void> {
   const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const session = await SemiontSession.signInDevice({
+  const opened = await SemiontSession.signInDevice({
     kb: httpKb({
       id: 'household-canonicalize-subsystems',
       label: 'household canonicalize-subsystems',
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
       if (!verificationUriComplete) console.error(`Code: ${userCode}`);
     },
   });
-  const semiont = session.client;
+  const semiont = opened.session.client;
 
   try {
     const all = (await semiont.browse.resources({ limit: 1000 }).fresh()).resources;
@@ -212,7 +212,7 @@ async function main(): Promise<void> {
     console.log(`\nDone. Bound ${bound} annotations; ${synthesized} new Subsystem resources.`);
     closeInteractive();
   } finally {
-    await session.dispose();
+    opened.dispose();
   }
 }
 

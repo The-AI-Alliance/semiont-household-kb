@@ -67,7 +67,7 @@ function parseEventBody(body: string): { date: Date | null; subsystem: string | 
 
 async function main(): Promise<void> {
   const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const session = await SemiontSession.signInDevice({
+  const opened = await SemiontSession.signInDevice({
     kb: httpKb({
       id: 'household-track-recurring-services',
       label: 'household track-recurring-services',
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
       if (!verificationUriComplete) console.error(`Code: ${userCode}`);
     },
   });
-  const semiont = session.client;
+  const semiont = opened.session.client;
 
   try {
     const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
@@ -188,7 +188,7 @@ async function main(): Promise<void> {
     console.log(`\nDone. Synthesized ${schedules} ServiceSchedule resources; ${overdue} overdue.`);
     closeInteractive();
   } finally {
-    await session.dispose();
+    opened.dispose();
   }
 }
 
