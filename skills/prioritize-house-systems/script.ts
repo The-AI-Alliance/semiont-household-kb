@@ -8,9 +8,9 @@
 import {
   SemiontSession,
   InMemorySessionStorage,
-  httpKb,
   resourceId as ridBrand,
   type GatheredContext,
+  type KbTarget,
 } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
 import { lookupLifespan } from '../../src/lifespan-data.js';
@@ -43,22 +43,18 @@ function slugify(text: string): string {
 }
 
 async function main(): Promise<void> {
-  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const opened = await SemiontSession.signInDevice({
-    kb: httpKb({
-      id: 'household-prioritize-house-systems',
-      label: 'household prioritize-house-systems',
-      host: gateway.hostname,
-      port: Number(gateway.port) || 4000,
-      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
-    }),
-    storage: new InMemorySessionStorage(),
-    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
-      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
-      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
-    },
-  });
-  const semiont = opened.session.client;
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KbTarget = {
+    id: 'household-prioritize-house-systems',
+    label: 'household prioritize-house-systems',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   try {
     const all = (await semiont.browse.resources({ limit: 5000 }).fresh()).resources;
@@ -176,24 +172,23 @@ async function main(): Promise<void> {
       `## Overdue service schedules\n\n${overdueSchedules || '(none surfaced — schedule cadence is on track or insufficient data)'}\n\n` +
       `---\n\n`;
 
-    const yieldEvent = await semiont.yield.delegate({
-      context,
+    const yieldEvent = await semiont.yield.fromContext(context, {
       title: `System Priorities`,
       storageUri: `file://generated/system-priorities-${new Date().toISOString().slice(0, 10)}.md`,
       entityTypes: ['SystemPriorities', 'Aggregate'],
       prompt: `${PRIORITIES_INSTRUCTIONS}\n\nBegin the body with this preamble verbatim:\n\n${prepend}`,
     });
-    if (!yieldEvent.result || !('resourceId' in yieldEvent.result)) {
-      console.error(`the generation made no resource`);
+    if (yieldEvent.kind !== 'complete') {
+      console.error(`yield.fromContext did not complete: ${yieldEvent.kind}`);
       closeInteractive();
       return;
     }
-    const resourceId = yieldEvent.result && 'resourceId' in yieldEvent.result ? yieldEvent.result.resourceId : undefined;
+    const resourceId = (yieldEvent.data.result as { resourceId?: string } | undefined)?.resourceId;
     console.log(`\n✓ SystemPriorities synthesized: ${resourceId}`);
 
     closeInteractive();
   } finally {
-    opened.dispose();
+    await session.dispose();
   }
 }
 

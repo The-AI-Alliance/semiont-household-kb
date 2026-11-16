@@ -43,11 +43,11 @@ HOST_ADDR=$(container run --rm node:24-alpine sh -c "ip route | awk '/default/{p
 
 container run --rm -v "$(pwd):/work" -w /work \
   -e SEMIONT_API_URL=http://${HOST_ADDR}:4000 \
+  -e SEMIONT_USER_EMAIL=admin@example.com \
+  -e SEMIONT_USER_PASSWORD=<your-password> \
   node:24-alpine \
-  sh -c 'npm ci --no-audit --no-fund && npx tsx skills/ingest-corpus/script.ts'
+  sh -c 'npm install --silent --no-fund @semiont/sdk tsx && npx tsx skills/ingest-corpus/script.ts'
 ```
-
-The script prints an address: open it in a browser and approve the sign-in. [Signing in](https://github.com/The-AI-Alliance/semiont/blob/main/docs/builder/SIGN-IN.md) has the other ways a script can sign in.
 
 ## Output
 
@@ -55,6 +55,6 @@ Per-file resource id and entity types.
 
 ## Guidance for the AI assistant
 
-- Re-running creates duplicates. Restart the stack to start fresh, or use `browse.resources({ search: '<title>' })` to check before re-running.
+- Re-running creates duplicates. Restart the backend stack to start fresh, or use `browse.resources({ search: '<title>' })` to check before re-running.
 - Subdirectory layout (`hvac/`, `plumbing/`, etc.) is convenient organization, not load-bearing — file classification comes from filename heuristics, so reorganizing the corpus by topic doesn't change what the skills see.
 - Pre-curated context articles in `context/` / `curated/` / `generated/` survive subsequent runs.

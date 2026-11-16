@@ -18,18 +18,18 @@ This KB operationalizes the home-management worked examples in [`semiont-templat
   - `src/external-authorities.ts` — adapters for manufacturer manual lookups, ASHRAE / NFPA / NRCA standard references, USDA hardiness zones
   - `src/lifespan-data.ts` — typical lifespan ranges by subsystem (used by `prioritize-house-systems` when no manufacturer reference is available)
   - `src/interactive.ts` — `confirm` / `pick` / `preview` helpers for tier-3 interactive checkpoints
-- **`skills/`** — ten skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running stack.
+- **`skills/`** — ten skills, each shipping a `SKILL.md` plus a `script.ts` that uses `@semiont/sdk` against the running backend.
 
 | Skill | What it does | New SDK verbs |
 |---|---|---|
 | [`ingest-corpus`](skills/ingest-corpus/) | Walk the repo, declare entity-type vocabulary, create one resource per file | `frame.addEntityTypes`, `yield.resource` |
-| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.delegate` (linking) |
-| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.delegate`, `+ bind.body` |
+| [`mark-house-entities`](skills/mark-house-entities/) | Detect Person, Room, Subsystem, Appliance, Vendor, Utility, Service, Date, MonetaryValue, Address — including anaphoric mentions ("the contractor", "the AC unit", "the master bath") | `mark.assist` (linking) |
+| [`canonicalize-rooms`](skills/canonicalize-rooms/) | Promote Room mentions to canonical Room resources | `+ match.search`, `+ yield.fromContext`, `+ bind.body` |
 | [`canonicalize-subsystems`](skills/canonicalize-subsystems/) | Promote Subsystem / Appliance mentions to canonical Subsystem resources with manufacturer / installed-date / warranty / lifespan | same shape |
 | [`canonicalize-vendors`](skills/canonicalize-vendors/) | Promote Vendor / service-company mentions to canonical Vendor resources | same shape |
-| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.delegate`, `+ bind.body` |
+| [`extract-events`](skills/extract-events/) | Synthesize one Event per dated service / repair / payment / visit, bound to Subsystem and Vendor | `+ yield.fromContext`, `+ bind.body` |
 | [`track-recurring-services`](skills/track-recurring-services/) | Detect recurring service schedules; project next-due dates | `+ yield.resource` (one ServiceSchedule per cadence) |
-| [`comment-action-items`](skills/comment-action-items/) | Surface follow-up items, missing documentation, warranty events | `mark.delegate` (commenting) |
+| [`comment-action-items`](skills/comment-action-items/) | Surface follow-up items, missing documentation, warranty events | `mark.assist` (commenting) |
 | [`assess-house-maintenance`](skills/assess-house-maintenance/) | Per-Subsystem backward-looking maintenance score (worked example Q1) | `+ gather.annotation`, full pipeline |
 | [`prioritize-house-systems`](skills/prioritize-house-systems/) | Forward-looking System priorities (worked example Q2) | full pipeline composition |
 | [`vendor-track-record`](skills/vendor-track-record/) | Per-Vendor decisional summary | full pipeline composition |
@@ -83,13 +83,13 @@ A real-world deployment of this KB carries the family's address, financial detai
 
 - Use **local-first** inference (Ollama) — the privacy gain compounds with the cost gain.
 - Be careful about external-authority lookups — sending a vendor's name to a generic Google search is fine; sending the homeowner's address to a third-party API is not.
-- Treat the stack as on-premise from the start. Codespaces is for evaluating the synthetic dataset, not for running real homeowner records.
+- Treat the backend stack as on-premise from the start. Codespaces is for evaluating the synthetic dataset, not for running real homeowner records.
 
 ## Working in containers — do not install npm packages on the host
 
-This template assumes a containerized workflow. The stack runs in containers (`semiont start` brings it up); the skills run in containers too.
+This template assumes a containerized workflow. The backend stack runs in containers (`semiont start` brings it up); the skills run in containers too.
 
-## Stack setup
+## Backend setup
 
 ### Local: `semiont start`
 
@@ -106,13 +106,12 @@ semiont useradd --email admin@example.com --admin
 
 ### Codespaces (synthetic data only)
 
-From your machine, `semiont start --runtime codespace --repo The-AI-Alliance/semiont-household-kb` creates or resumes the codespace, waits for the stack (which the codespace's own launcher runs), and forwards the KB (4000) and its Keycloak (8080), or the next free ports it prints. No account is created — make the first one; it prompts for the password:
-
 ```bash
-semiont useradd --repo The-AI-Alliance/semiont-household-kb --email you@example.com
+gh codespace create --repo The-AI-Alliance/semiont-household-kb --machine premiumLinux
+gh codespace ports forward 4000:4000
+gh codespace ssh -- 'cd /workspaces/* && docker compose -f .semiont/compose/backend.yml \
+  exec -T backend semiont-useradd --email you@example.com --generate-password --admin'
 ```
-
-`semiont stop --repo The-AI-Alliance/semiont-household-kb` stops the codespace; add `--delete` to destroy it.
 
 ## Background reading
 
@@ -120,7 +119,7 @@ semiont useradd --repo The-AI-Alliance/semiont-household-kb --email you@example.
 |---|---|
 | [PERSONAL-KB-EXPLORATION.md](https://github.com/The-AI-Alliance/semiont-template-kb/blob/main/PERSONAL-KB-EXPLORATION.md) | Full analysis of personal-KB use cases. The home-management worked examples (Q1, Q2) and vendor / system canonicalization patterns map directly to skills here. |
 | [`@semiont/sdk` README](https://github.com/The-AI-Alliance/semiont/tree/main/packages/sdk) | The TypeScript surface — eight verbs plus admin/auth/job. |
-| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/builder/skills) | Reference skill packs. |
+| [Semiont protocol skills](https://github.com/The-AI-Alliance/semiont/tree/main/docs/protocol/skills) | Reference skill packs. |
 | [ASHRAE Standard 180](https://www.ashrae.org/) | HVAC inspection / maintenance schedules. |
 | [NFPA codes](https://www.nfpa.org/) | Electrical and fire-safety standards. |
 | [NRCA roofing standards](https://www.nrca.net/) | Roofing-system inspection cadences. |

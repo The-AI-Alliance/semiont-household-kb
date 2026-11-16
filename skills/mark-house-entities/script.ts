@@ -3,7 +3,7 @@
  * Utility, Service, Date, MonetaryValue, Address spans across the markdown
  * corpus.
  *
- * mark.delegate with motivation 'linking'. Default behavior surfaces both
+ * mark.assist with motivation 'linking'. Default behavior surfaces both
  * formally-named entities (people, rooms, subsystems, dates, …) AND
  * anaphoric / descriptive references that point at those entity types
  * ("the contractor", "the AC", "the master bath"). Tier-2 canonicalize-*
@@ -15,8 +15,9 @@
  * Usage: tsx skills/mark-house-entities/script.ts [<resourceId>] [--interactive]
  */
 
-import { SemiontSession, InMemorySessionStorage, httpKb, entityType, resourceId as ridBrand, type ResourceId } from '@semiont/sdk';
+import { SemiontSession, InMemorySessionStorage, entityType, resourceId as ridBrand, type KbTarget, type ResourceId } from '@semiont/sdk';
 import { confirm, close as closeInteractive } from '../../src/interactive.js';
+import { createdCount } from '../../src/mark-result.js';
 import { getMediaType } from '../../src/media-type.js';
 
 const ENTITY_TYPES = (
@@ -38,22 +39,18 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((a) => !a.startsWith('-'));
   const explicitResourceId = args[0];
 
-  const gateway = new URL(process.env.SEMIONT_API_URL ?? 'http://localhost:4000');
-  const opened = await SemiontSession.signInDevice({
-    kb: httpKb({
-      id: 'household-mark-house-entities',
-      label: 'household mark-house-entities',
-      host: gateway.hostname,
-      port: Number(gateway.port) || 4000,
-      protocol: gateway.protocol === 'https:' ? 'https' : 'http',
-    }),
-    storage: new InMemorySessionStorage(),
-    onCode: ({ verificationUri, verificationUriComplete, userCode }) => {
-      console.error(`Approve this script at ${verificationUriComplete ?? verificationUri}`);
-      if (!verificationUriComplete) console.error(`Code: ${userCode}`);
-    },
-  });
-  const semiont = opened.session.client;
+  const baseUrl = process.env.SEMIONT_API_URL ?? 'http://localhost:4000';
+  const email = process.env.SEMIONT_USER_EMAIL!;
+  const password = process.env.SEMIONT_USER_PASSWORD!;
+  const u = new URL(baseUrl);
+  const kb: KbTarget = {
+    id: 'household-mark-house-entities',
+    label: 'household mark-house-entities',
+    email,
+    endpoint: { kind: 'http', host: u.hostname, port: Number(u.port) || 4000, protocol: u.protocol.replace(':', '') as 'http' | 'https' },
+  };
+  const session = await SemiontSession.signInHttp({ kb, storage: new InMemorySessionStorage(), baseUrl, email, password });
+  const semiont = session.client;
 
   try {
     let targets: ResourceId[];
@@ -66,7 +63,7 @@ async function main(): Promise<void> {
           const mt = getMediaType(r);
           return mt === 'text/markdown' || mt === 'text/plain';
         })
-        .map((r) => r['@id']);
+        .map((r) => ridBrand(r['@id']));
     }
 
     if (targets.length === 0) {
@@ -76,7 +73,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `Will run mark.delegate (motivation: linking, ${ENTITY_TYPES.length} entity types, ` +
+      `Will run mark.assist (motivation: linking, ${ENTITY_TYPES.length} entity types, ` +
         `descriptive references ${INCLUDE_DESCRIPTIVE_REFERENCES ? 'on' : 'off'}) ` +
         `against ${targets.length} markdown resource(s).`,
     );
@@ -90,12 +87,11 @@ async function main(): Promise<void> {
 
     let totalCreated = 0;
     for (const rId of targets) {
-      const done = await semiont.mark.delegate(rId, {
-        motivation: 'linking',
+      const progress = await semiont.mark.assist(rId, 'linking', {
         entityTypes: ENTITY_TYPES,
         includeDescriptiveReferences: INCLUDE_DESCRIPTIVE_REFERENCES,
       });
-      const n = done.result && 'persisted' in done.result ? done.result.persisted : 0;
+      const n = createdCount(progress);
       totalCreated += n;
       console.log(`  ${rId}: ${n} new annotations`);
     }
@@ -103,7 +99,7 @@ async function main(): Promise<void> {
     console.log(`\nDone. Created ${totalCreated} house-entity annotations.`);
     closeInteractive();
   } finally {
-    opened.dispose();
+    await session.dispose();
   }
 }
 
